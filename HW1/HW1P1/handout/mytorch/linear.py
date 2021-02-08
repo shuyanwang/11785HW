@@ -22,7 +22,6 @@ class Linear():
         self.W = weight_init_fn(in_feature, out_feature)
         self.b = bias_init_fn(out_feature)
 
-        # TODO: Complete these but do not change the names.
         self.dW = np.zeros_like(self.W)
         self.db = np.zeros_like(self.b)
 
