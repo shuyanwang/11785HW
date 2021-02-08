@@ -1,0 +1,119 @@
+---
+general:
+  name: hw1p1
+  description: ''
+  display_name: hw1p1
+  handin_filename: handin.tar
+  handin_directory: handin
+  max_grace_days: 0
+  handout: https://autolab.andrew.cmu.edu/courses/11785-s20/assessments/hw1p1/attachments/3129
+  writeup: https://autolab.andrew.cmu.edu/courses/11785-s20/assessments/hw1p1/attachments/3135
+  max_submissions: -1
+  disable_handins: false
+  max_size: 2
+  category_name: Homework Part 1
+problems:
+- name: Softmax Cross Entropy (forward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Softmax Cross Entropy (derivative)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Sigmoid Non-Linearity (forward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Sigmoid Non-Linearity (derivative)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: ReLU Non-Linearity (forward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: ReLU Non-Linearity (derivative)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Tanh Non-Linearity (forward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Tanh Non-Linearity (derivative)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Multiple Choice Questions
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: Batch Normalization (training time)
+  description: ''
+  max_score: 10.0
+  optional: false
+- name: Single Hidden Layer (forward)
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: Single Hidden Layer (backward)
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: N Hidden Layer (forward) 1
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: N Hidden Layer (forward) 2
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: N Hidden Layer (forward) 3
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: N Hidden Layer (backward) 1
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: N Hidden Layer (backward) 2
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: N Hidden Layer (backward) 3
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: Momentum
+  description: ''
+  max_score: 10.0
+  optional: false
+- name: Batch Normalization (inference time)
+  description: ''
+  max_score: 5.0
+  optional: false
+- name: Linear Classifier (forward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Linear Classifier (backward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Linear Classifier (step)
+  description: ''
+  max_score: 1.0
+  optional: false
+- name: Linear Layer (forward)
+  description: ''
+  max_score: 2.0
+  optional: false
+- name: Linear Layer (backward)
+  description: ''
+  max_score: 2.0
+  optional: false
+autograder:
+  autograde_timeout: 180
+  autograde_image: rhel.img
+  release_score: true

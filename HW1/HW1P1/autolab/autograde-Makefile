@@ -1,0 +1,6 @@
+autograde:
+	mkdir handin
+	tar -xf handin.tar -C handin
+	tar -xf autograde.tar
+	cp autograde/setup.cfg handin/setup.cfg
+	AUTOLAB=1 python3 autograde/runner.py --module-path=handin/
