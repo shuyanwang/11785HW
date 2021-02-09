@@ -34,7 +34,6 @@ from linear import *
 
 
 class MLP(object):
-
     """
     A simple multilayer perceptron
     """
@@ -62,12 +61,26 @@ class MLP(object):
         # Initialize and add all your linear layers into the list 'self.linear_layers'
         # (HINT: self.foo = [ bar(???) for ?? in ? ])
         # (HINT: Can you use zip here?)
-        self.linear_layers = None
+        self.linear_layers = []
+        if len(hiddens) == 0:
+            self.linear_layers.append(Linear(input_size, output_size, weight_init_fn, bias_init_fn))
+        else:
+            self.linear_layers.append(Linear(input_size, hiddens[0], weight_init_fn, bias_init_fn))
+
+        for i, o in zip(hiddens[0:-1], hiddens[1:]):
+            self.linear_layers.append(Linear(i, o, weight_init_fn, bias_init_fn))
+        self.linear_layers.append(Linear(hiddens[-1], output_size, weight_init_fn, bias_init_fn))
 
         # If batch norm, add batch norm layers into the list 'self.bn_layers'
         if self.bn:
-            self.bn_layers = None
-
+            self.bn_layers = []
+            if self.num_bn_layers < len(hiddens):
+                for i in range(self.num_bn_layers):
+                    self.bn_layers.append(BatchNorm(hiddens[i]))
+            else:
+                for i in range(len(hiddens)):
+                    self.bn_layers.append(BatchNorm(hiddens[i]))
+                self.bn_layers.append(BatchNorm(output_size))
 
     def forward(self, x):
         """
@@ -105,7 +118,7 @@ class MLP(object):
         raise NotImplemented
 
     def error(self, labels):
-        return (np.argmax(self.output, axis = 1) != np.argmax(labels, axis = 1)).sum()
+        return (np.argmax(self.output, axis=1) != np.argmax(labels, axis=1)).sum()
 
     def total_loss(self, labels):
         return self.criterion(self.output, labels).sum()
@@ -119,9 +132,10 @@ class MLP(object):
     def eval(self):
         self.train_mode = False
 
-#This function does not carry any points. You can try and complete this function to train your network.
-def get_training_stats(mlp, dset, nepochs, batch_size):
 
+# This function does not carry any points. You can try and complete this function to train your
+# network.
+def get_training_stats(mlp, dset, nepochs, batch_size):
     train, val, _ = dset
     trainx, trainy = train
     valx, valy = val
@@ -140,12 +154,10 @@ def get_training_stats(mlp, dset, nepochs, batch_size):
         # Per epoch setup ...
 
         for b in range(0, len(trainx), batch_size):
-
             pass  # Remove this line when you start implementing this
             # Train ...
 
         for b in range(0, len(valx), batch_size):
-
             pass  # Remove this line when you start implementing this
             # Val ...
 
