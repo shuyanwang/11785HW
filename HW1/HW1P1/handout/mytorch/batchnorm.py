@@ -86,3 +86,13 @@ class BatchNorm(object):
                 self.x - self.mean) + dmean / self.x.shape[0]
 
         return out
+
+
+if __name__ == '__main__':
+    x = np.random.random((10, 2))
+
+    bn = BatchNorm(2)
+
+    y = bn(x)
+
+    t = 1

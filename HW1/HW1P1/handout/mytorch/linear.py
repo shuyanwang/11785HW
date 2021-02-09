@@ -73,3 +73,20 @@ class Linear():
         dX = np.sum(dX, axis=2)
 
         return dX
+
+
+if __name__ == '__main__':
+    def init_func(dim1, dim2=None):
+        if dim2 is None:
+            return np.random.random((1, dim1))
+        else:
+            return np.random.random((dim1, dim2))
+
+
+    x = np.random.random((10, 5))
+
+    l = Linear(5, 3, init_func, init_func)
+
+    y = l(x)
+
+    t = 1
