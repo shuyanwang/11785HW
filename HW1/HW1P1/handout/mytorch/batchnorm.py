@@ -52,8 +52,8 @@ class BatchNorm(object):
 
         self.x = x
 
-        self.mean = np.mean(x, axis=0)
-        self.var = np.sum((x - self.mean) ** 2, axis=0) / x.shape[0]
+        self.mean = np.mean(x, axis=0, keepdims=True)
+        self.var = np.sum((x - self.mean) ** 2, axis=0, keepdims=True) / x.shape[0]
         self.norm = (x - self.mean) / np.sqrt(self.var ** 2 + self.eps)  # ???
         self.out = self.gamma * self.norm + self.beta  # ???
 
@@ -73,14 +73,14 @@ class BatchNorm(object):
 
         dnorm = delta * self.gamma
 
-        self.dbeta = np.sum(delta, axis=0)
-        self.dgamma = np.sum(delta * self.norm, axis=0)
+        self.dbeta = np.sum(delta, axis=0, keepdims=True)
+        self.dgamma = np.sum(delta * self.norm, axis=0, keepdims=True)
 
         dvar = -0.5 * np.sum(dnorm * (self.x - self.mean) * np.power(self.mean + self.eps, -1.5),
-                             axis=0)
+                             axis=0, keepdims=True)
 
-        dmean = -np.sum(dnorm * np.power(self.var + self.eps, -0.5), axis=0) - 2 / self.x.shape[
-            0] * dvar * np.sum(self.x - self.mean, axis=0)
+        dmean = -np.sum(dnorm * np.power(self.var + self.eps, -0.5), axis=0, keepdims=True) - 2 / \
+                self.x.shape[0] * dvar * np.sum(self.x - self.mean, axis=0, keepdims=True)
 
         out = dnorm * np.power(self.var + self.eps, -0.5) + dvar * 2 / self.x.shape[0] * (
                 self.x - self.mean) + dmean / self.x.shape[0]
