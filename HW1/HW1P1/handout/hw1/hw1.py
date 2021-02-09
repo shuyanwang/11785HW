@@ -31,6 +31,7 @@ from loss import *
 from activation import *
 from batchnorm import *
 from linear import *
+from typing import List
 
 
 class MLP(object):
@@ -38,7 +39,8 @@ class MLP(object):
     A simple multilayer perceptron
     """
 
-    def __init__(self, input_size, output_size, hiddens, activations, weight_init_fn,
+    def __init__(self, input_size, output_size, hiddens, activations: List[Activation],
+                 weight_init_fn,
                  bias_init_fn, criterion, lr, momentum=0.0, num_bn_layers=0):
 
         # Don't change this -->
@@ -82,6 +84,8 @@ class MLP(object):
             #         self.bn_layers.append(BatchNorm(hiddens[i]))
             #     self.bn_layers.append(BatchNorm(output_size))
 
+        self.output = None
+
     def forward(self, x):
         """
         Argument:
@@ -98,12 +102,19 @@ class MLP(object):
                 self.bn_layers[layer_id](self.linear_layers[layer_id](x)))
         while layer_id < self.nlayers:
             x = self.activations[layer_id](self.linear_layers[layer_id](x))
-        return x
+        self.output = x
+        return self.output
 
     def zero_grads(self):
         # Use numpyArray.fill(0.0) to zero out your backpropped derivatives in each
         # of your linear and batchnorm layers.
-        raise NotImplemented
+        for linear in self.linear_layers:
+            linear.db.fill(0.0)
+            linear.dW.fill(0.0)
+
+        for bn in self.bn_layers:
+            bn.dbeta.fill(0.0)
+            bn.dgamma.fill(0.0)
 
     def step(self):
         # Apply a step to the weights and biases of the linear layers.
@@ -111,19 +122,37 @@ class MLP(object):
         # (You will add momentum later in the assignment to the linear layers only
         # , not the batchnorm layers)
 
-        for i in range(len(self.linear_layers)):
-            # Update weights and biases here
-            pass
-        # Do the same for batchnorm layers
+        for linear in self.linear_layers:
+            linear.momentum_W = self.momentum * linear.momentum_W - self.lr * linear.dW
+            linear.W += linear.momentum_W
 
-        raise NotImplemented
+            linear.momentum_b = self.momentum * linear.momentum_b - self.lr * linear.db
+            linear.b += linear.momentum_b
+
+        for bn in self.bn_layers:
+            bn.gamma -= bn.dgamma * self.lr
+            bn.beta -= bn.dbeta * self.lr
+
+        # raise NotImplemented
 
     def backward(self, labels):
         # Backpropagate through the activation functions, batch norm and
         # linear layers.
         # Be aware of which return derivatives and which are pure backward passes
         # i.e. take in a loss w.r.t it's output.
-        raise NotImplemented
+        # raise NotImplemented
+        # I do not think labels should be used here.
+
+        gradient = self.criterion.derivative()
+
+        for layer in range(self.nlayers - 1, self.nlayers - self.num_bn_layers - 1, -1):
+            gradient = gradient * self.activations[layer].derivative()
+            gradient = self.linear_layers[layer].backward(gradient)
+
+        for layer in range(self.nlayers - self.num_bn_layers - 1, -1, -1):
+            gradient = gradient * self.activations[layer].derivative()
+            gradient = self.bn_layers[layer].backward(gradient)
+            gradient = self.linear_layers[layer].backward(gradient)
 
     def error(self, labels):
         return (np.argmax(self.output, axis=1) != np.argmax(labels, axis=1)).sum()
