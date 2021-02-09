@@ -64,7 +64,7 @@ class Linear():
         # dy_bo/db_o = 1
         # dL/db_o = delta_bo via b in batch -> mean
 
-        self.db = np.mean(delta, axis=0)
+        self.db = np.mean(delta, axis=0).reshape(1, -1)
 
         # dy_bo/dx_bi = w_io
         # where is x_bi used? in y_bO for all O, so we should sum over O to account for all pDs
