@@ -74,13 +74,13 @@ class MLP(object):
         # If batch norm, add batch norm layers into the list 'self.bn_layers'
         if self.bn:
             self.bn_layers = []
-            if self.num_bn_layers < len(hiddens):
-                for i in range(self.num_bn_layers):
-                    self.bn_layers.append(BatchNorm(hiddens[i]))
-            else:
-                for i in range(len(hiddens)):
-                    self.bn_layers.append(BatchNorm(hiddens[i]))
-                self.bn_layers.append(BatchNorm(output_size))
+            # if self.num_bn_layers < len(hiddens):
+            for i in range(self.num_bn_layers):
+                self.bn_layers.append(BatchNorm(hiddens[i]))
+            # else:
+            #     for i in range(len(hiddens)):
+            #         self.bn_layers.append(BatchNorm(hiddens[i]))
+            #     self.bn_layers.append(BatchNorm(output_size))
 
     def forward(self, x):
         """
