@@ -13,7 +13,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class HyperParameters:
     context_K = 11
-    batch_size = 2048
+    batch_size = 32768
     lr = 1e-3
     max_epoch = 100000
 
@@ -34,6 +34,7 @@ class Dataset(torch.utils.data.Dataset):
                                      torch.from_numpy(x), torch.zeros(pad_size)], dim=0))
             for frame_id in range(x.shape[0]):
                 self.look_up.append((u_id, frame_id))
+        print(X_dir, self.__len__())
 
     def __getitem__(self, index) -> T_co:
         u_id, frame_id = self.look_up[index]
@@ -120,9 +121,9 @@ def train(train_loader, valid_loader, writer):
         model.train()
         for epoch in range(1, HyperParameters.max_epoch):
             print('epoch: ', epoch)
-            for bx, by in train_loader:
-                bx = bx.to(device)
-                by = by.to(device)
+            for i, batch in enumerate(train_loader):
+                bx = batch[0].to(device)
+                by = batch[1].to(device)
 
                 prediction = model(bx)
                 loss = criterion(prediction, by)
@@ -130,6 +131,8 @@ def train(train_loader, valid_loader, writer):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
+                print('iter: ', i)
 
             writer.add_scalar('Loss/Train', loss, epoch)
             if epoch % 10 == 0:
