@@ -85,6 +85,11 @@ def main():
     test_loader = torch.utils.data.DataLoader(
         TestSet(test_X), batch_size=HyperParameters.batch_size, shuffle=False)
 
+    train(train_loader, valid_loader, writer)
+
+    writer.flush()
+    writer.close()
+
 
 def train(train_loader, valid_loader, writer):
     model = nn.Sequential(nn.Linear(40, 64), nn.BatchNorm1d(64), nn.ReLU(),
