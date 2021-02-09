@@ -144,15 +144,15 @@ class MLP(object):
         # Be aware of which return derivatives and which are pure backward passes
         # i.e. take in a loss w.r.t it's output.
         # raise NotImplemented
-        # I do not think labels should be used here.
+        loss = self.total_loss(labels)
 
         gradient = self.criterion.derivative()
 
-        for layer in range(self.nlayers - 1, self.nlayers - self.num_bn_layers - 1, -1):
+        for layer in range(self.nlayers - 1, self.nlayers - self.num_bn_layers - 2, -1):
             gradient = gradient * self.activations[layer].derivative()
             gradient = self.linear_layers[layer].backward(gradient)
 
-        for layer in range(self.nlayers - self.num_bn_layers - 1, -1, -1):
+        for layer in range(self.nlayers - self.num_bn_layers - 2, -1, -1):
             gradient = gradient * self.activations[layer].derivative()
             gradient = self.bn_layers[layer].backward(gradient)
             gradient = self.linear_layers[layer].backward(gradient)
