@@ -69,9 +69,10 @@ class MLP(object):
         else:
             self.linear_layers.append(Linear(input_size, hiddens[0], weight_init_fn, bias_init_fn))
 
-        for i, o in zip(hiddens[0:-1], hiddens[1:]):
-            self.linear_layers.append(Linear(i, o, weight_init_fn, bias_init_fn))
-        self.linear_layers.append(Linear(hiddens[-1], output_size, weight_init_fn, bias_init_fn))
+            for i, o in zip(hiddens[0:-1], hiddens[1:]):
+                self.linear_layers.append(Linear(i, o, weight_init_fn, bias_init_fn))
+            self.linear_layers.append(
+                Linear(hiddens[-1], output_size, weight_init_fn, bias_init_fn))
 
         # If batch norm, add batch norm layers into the list 'self.bn_layers'
         if self.bn:
@@ -100,8 +101,10 @@ class MLP(object):
         while layer_id < self.num_bn_layers:
             x = self.activations[layer_id](
                 self.bn_layers[layer_id](self.linear_layers[layer_id](x), eval=not self.train_mode))
+            layer_id += 1
         while layer_id < self.nlayers:
             x = self.activations[layer_id](self.linear_layers[layer_id](x))
+            layer_id += 1
         self.output = x
         return self.output
 
