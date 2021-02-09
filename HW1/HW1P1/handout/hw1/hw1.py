@@ -75,8 +75,8 @@ class MLP(object):
                 Linear(hiddens[-1], output_size, weight_init_fn, bias_init_fn))
 
         # If batch norm, add batch norm layers into the list 'self.bn_layers'
+        self.bn_layers = []
         if self.bn:
-            self.bn_layers = []
             # if self.num_bn_layers < len(hiddens):
             for i in range(self.num_bn_layers):
                 self.bn_layers.append(BatchNorm(hiddens[i]))
