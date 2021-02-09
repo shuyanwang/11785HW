@@ -13,7 +13,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class HyperParameters:
     context_K = 11
-    batch_size = 12
+    batch_size = 1024
     lr = 1e-3
     max_epoch = 100000
 
@@ -27,12 +27,15 @@ class TrainSet(torch.utils.data.Dataset):
         self.Y = []
 
         for x, y in zip(X, Y):
-            x_padded = torch.cat([torch.zeros(pad_size), x, torch.zeros(pad_size)])  # (K+?+K)*40
+            x_padded = torch.cat(
+                [torch.zeros(pad_size), torch.from_numpy(x), torch.zeros(pad_size)])  # (K+?+K),40
             for i in range(y.shape[0]):
-                self.X.append(x_padded[i:i + 2 * context_K + 1])
-                self.Y.append(y[i])
+                self.X.append(torch.flatten(x_padded[i:i + 2 * context_K + 1]))  # (2K+1)*40
+                self.Y.append(int(y[i]))
 
         self.length = len(self.Y)
+        self.X = torch.stack(self.X)
+        self.Y = torch.as_tensor(self.Y)
 
     def __getitem__(self, index) -> T_co:
         return self.X[index], self.Y[index]
@@ -53,11 +56,13 @@ class TestSet(torch.utils.data.Dataset):
         self.X = []
 
         for x in X:
-            x_padded = torch.cat([torch.zeros(pad_size), x, torch.zeros(pad_size)])  # (K+?+K)*40
+            x_padded = torch.cat(
+                [torch.zeros(pad_size), torch.from_numpy(x), torch.zeros(pad_size)])
             for i in range(x.shape[0]):
-                self.X.append(x_padded[i:i + 2 * context_K + 1])
+                self.X.append(torch.flatten(x_padded[i:i + 2 * context_K + 1]))
 
         self.length = len(self.X)
+        self.X = torch.stack(self.X)
 
     def __getitem__(self, index) -> T_co:
         return self.X[index]
@@ -67,13 +72,13 @@ class TestSet(torch.utils.data.Dataset):
 
 
 def main():
-    writer = SummaryWriter('./logs', comment=str(HyperParameters))
+    writer = SummaryWriter('./logs', comment=str(HyperParameters.context_K))
 
-    train_X = np.load(os.path.join(data_dir, 'train.npy'), allow_pickle=True)  # N*?*40
-    train_Y = np.load(os.path.join(data_dir, 'train_labels.npy'), allow_pickle=True)  # N*?
+    train_X = np.load(os.path.join(data_dir, 'train.npy'), allow_pickle=True)  # N,?,40
+    train_Y = np.load(os.path.join(data_dir, 'train_labels.npy'), allow_pickle=True)  # N,?
 
-    valid_X = np.load(os.path.join(data_dir, 'dev.npy'), allow_pickle=True)  # N*?*40
-    valid_Y = np.load(os.path.join(data_dir, 'dev_labels.npy'), allow_pickle=True)  # N*?
+    valid_X = np.load(os.path.join(data_dir, 'dev.npy'), allow_pickle=True)  # N,?,40
+    valid_Y = np.load(os.path.join(data_dir, 'dev_labels.npy'), allow_pickle=True)  # N,?
 
     test_X = np.load(os.path.join(data_dir, 'test.npy'), allow_pickle=True)
 
@@ -92,11 +97,17 @@ def main():
 
 
 def train(train_loader, valid_loader, writer):
-    model = nn.Sequential(nn.Linear(40, 64), nn.BatchNorm1d(64), nn.ReLU(),
-                          nn.Linear(64, 128), nn.BatchNorm1d(128), nn.ReLU(),
-                          nn.Linear(128, 256), nn.BatchNorm1d(256), nn.ReLU(),
-                          nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(),
-                          nn.Linear(128, 71)).cuda()
+    # model = nn.Sequential(nn.Linear(40, 64), nn.BatchNorm1d(64), nn.ReLU(),
+    #                       nn.Linear(64, 128), nn.BatchNorm1d(128), nn.ReLU(),
+    #                       nn.Linear(128, 256), nn.BatchNorm1d(256), nn.ReLU(),
+    #                       nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(),
+    #                       nn.Linear(128, 71)).cuda()
+
+    model = nn.Sequential(nn.Linear(40 * 23, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
+                          # nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
+                          nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
+                          nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
+                          nn.Linear(256, 71)).cuda()
 
     model.double()
     optimizer = torch.optim.Adam(model.parameters(), lr=HyperParameters.lr)
@@ -104,7 +115,8 @@ def train(train_loader, valid_loader, writer):
 
     with torch.cuda.device(0):
         model.train()
-        for epoch in range(HyperParameters.max_epoch):
+        for epoch in range(1, HyperParameters.max_epoch):
+            print('epoch: ', epoch)
             for bx, by in train_loader:
                 bx = bx.to(device)
                 by = by.to(device)
@@ -112,21 +124,20 @@ def train(train_loader, valid_loader, writer):
                 prediction = model(bx)
                 loss = criterion(prediction, by)
 
-                writer.add_scalar('Loss/Train', loss, epoch)
-
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                if epoch % 1000 == 0:
-                    torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'loss': loss,
-                    }, 'checkpoints/model' + str(HyperParameters) + '.tar')
-                    evaluate(valid_loader, model, criterion, epoch, writer)
-                    model.train()
+            writer.add_scalar('Loss/Train', loss, epoch)
+            if epoch % 10 == 0:
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'loss': loss,
+                }, 'checkpoints/model' + str(HyperParameters.context_K) + '.tar')
+                evaluate(valid_loader, model, criterion, epoch, writer)
+                model.train()
 
 
 def evaluate(valid_loader, model, criterion, epoch, writer):
