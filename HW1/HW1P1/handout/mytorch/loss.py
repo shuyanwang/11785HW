@@ -11,8 +11,11 @@ def log_sum_exp(x: np.ndarray) -> np.ndarray:
     :param x: (batch, M)
     :return: (batch,)
     """
-    a = np.max(x, axis=1)
-    return a + np.log(np.sum(np.exp(x - a), axis=1))
+    a = np.max(x, axis=1, keepdims=True)
+
+    # t = np.exp(x - a)
+
+    return a + np.log(np.sum(np.exp(x - a), axis=1, keepdims=True))
 
 
 # The following Criterion class will be used again as the basis for a number
@@ -74,3 +77,9 @@ class SoftmaxCrossEntropy(Criterion):
             out (np.array): (batch size, 10)
         """
         return self.prediction - self.labels
+
+
+if __name__ == '__main__':
+    x = np.random.random((10, 2))
+    y = log_sum_exp(x)
+    t = 1

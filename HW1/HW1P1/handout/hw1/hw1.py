@@ -99,7 +99,7 @@ class MLP(object):
         layer_id = 0
         while layer_id < self.num_bn_layers:
             x = self.activations[layer_id](
-                self.bn_layers[layer_id](self.linear_layers[layer_id](x)))
+                self.bn_layers[layer_id](self.linear_layers[layer_id](x), eval=not self.train_mode))
         while layer_id < self.nlayers:
             x = self.activations[layer_id](self.linear_layers[layer_id](x))
         self.output = x
