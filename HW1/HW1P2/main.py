@@ -13,82 +13,85 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class HyperParameters:
     context_K = 11
-    batch_size = 1024
+    batch_size = 2048
     lr = 1e-3
     max_epoch = 100000
 
 
-class TrainSet(torch.utils.data.Dataset):
-    def __init__(self, X, Y, context_K=HyperParameters.context_K):
-        super(TrainSet, self).__init__()
+class Dataset(torch.utils.data.Dataset):
+    def __init__(self, X_dir, Y_dir=None, context_K=HyperParameters.context_K):
+        super(Dataset, self).__init__()
+        X = np.load(X_dir, allow_pickle=True)
+        self.test = Y_dir is None
+        self.N = X.shape[0]
         self.K = context_K
-        pad_size = (context_K, 40)
-        self.X = []
-        self.Y = []
-
-        for x, y in zip(X, Y):
-            x_padded = torch.cat(
-                [torch.zeros(pad_size), torch.from_numpy(x), torch.zeros(pad_size)])  # (K+?+K),40
-            for i in range(y.shape[0]):
-                self.X.append(torch.flatten(x_padded[i:i + 2 * context_K + 1]))  # (2K+1)*40
-                self.Y.append(int(y[i]))
-
-        self.length = len(self.Y)
-        self.X = torch.stack(self.X)
-        self.Y = torch.as_tensor(self.Y)
+        self.Y = np.load(Y_dir, allow_pickle=True) if not self.test else None  # N,?
+        self.look_up = []
+        pad_size = (self.K, 40)
+        self.X = []  # N,[(K+?+K),40]
+        for u_id, x in enumerate(X):
+            self.X.append(torch.cat([torch.zeros(pad_size),
+                                     torch.from_numpy(x), torch.zeros(pad_size)], dim=0))
+            for frame_id in range(x.shape[0]):
+                self.look_up.append((u_id, frame_id))
 
     def __getitem__(self, index) -> T_co:
-        return self.X[index], self.Y[index]
+        u_id, frame_id = self.look_up[index]
+        if self.test:
+            return torch.flatten(self.X[u_id][frame_id:self.K * 2 + frame_id + 1])
+        else:
+            return (torch.flatten(self.X[u_id][frame_id:self.K * 2 + frame_id + 1]),
+                    int(self.Y[u_id][frame_id]))
 
     def __len__(self):
-        return self.length
+        return len(self.look_up)
 
     # @staticmethod
     # def collate_fn(batch):
     #     pass
 
 
-class TestSet(torch.utils.data.Dataset):
-    def __init__(self, X, context_K=HyperParameters.context_K):
-        super(TestSet, self).__init__()
-        self.K = context_K
-        pad_size = (context_K, 40)
-        self.X = []
-
-        for x in X:
-            x_padded = torch.cat(
-                [torch.zeros(pad_size), torch.from_numpy(x), torch.zeros(pad_size)])
-            for i in range(x.shape[0]):
-                self.X.append(torch.flatten(x_padded[i:i + 2 * context_K + 1]))
-
-        self.length = len(self.X)
-        self.X = torch.stack(self.X)
-
-    def __getitem__(self, index) -> T_co:
-        return self.X[index]
-
-    def __len__(self):
-        return self.length
+# class TestSet(torch.utils.data.Dataset):
+#     def __init__(self, X, context_K=HyperParameters.context_K):
+#         super(TestSet, self).__init__()
+#         self.K = context_K
+#         pad_size = (context_K, 40)
+#         self.X = []
+#
+#         for x in X:
+#             x_padded = torch.cat(
+#                 [torch.zeros(pad_size), torch.from_numpy(x), torch.zeros(pad_size)])
+#             for i in range(x.shape[0]):
+#                 self.X.append(torch.flatten(x_padded[i:i + 2 * context_K + 1]))
+#
+#         self.length = len(self.X)
+#         self.X = torch.stack(self.X)
+#
+#     def __getitem__(self, index) -> T_co:
+#         return self.X[index]
+#
+#     def __len__(self):
+#         return self.length
 
 
 def main():
     writer = SummaryWriter('./logs', comment=str(HyperParameters.context_K))
 
-    train_X = np.load(os.path.join(data_dir, 'train.npy'), allow_pickle=True)  # N,?,40
-    train_Y = np.load(os.path.join(data_dir, 'train_labels.npy'), allow_pickle=True)  # N,?
+    train_X = os.path.join(data_dir, 'train.npy')  # N,?,40
+    train_Y = os.path.join(data_dir, 'train_labels.npy')  # N,?
 
-    valid_X = np.load(os.path.join(data_dir, 'dev.npy'), allow_pickle=True)  # N,?,40
-    valid_Y = np.load(os.path.join(data_dir, 'dev_labels.npy'), allow_pickle=True)  # N,?
+    valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
+    valid_Y = os.path.join(data_dir, 'dev_labels.npy')
 
-    test_X = np.load(os.path.join(data_dir, 'test.npy'), allow_pickle=True)
+    test_X = os.path.join(data_dir, 'test.npy')
 
     train_loader = torch.utils.data.DataLoader(
-        TrainSet(train_X, train_Y), batch_size=HyperParameters.batch_size, shuffle=True)
+        Dataset(train_X, train_Y), batch_size=HyperParameters.batch_size, shuffle=True)
     valid_loader = torch.utils.data.DataLoader(
-        TrainSet(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
+        Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
 
     test_loader = torch.utils.data.DataLoader(
-        TestSet(test_X), batch_size=HyperParameters.batch_size, shuffle=False)
+        Dataset(test_X), batch_size=HyperParameters.batch_size, shuffle=False)
 
     train(train_loader, valid_loader, writer)
 
@@ -104,7 +107,7 @@ def train(train_loader, valid_loader, writer):
     #                       nn.Linear(128, 71)).cuda()
 
     model = nn.Sequential(nn.Linear(40 * 23, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
-                          # nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
+                          nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
                           nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
                           nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
                           nn.Linear(256, 71)).cuda()
