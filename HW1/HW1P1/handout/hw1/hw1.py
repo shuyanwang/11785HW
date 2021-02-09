@@ -148,11 +148,11 @@ class MLP(object):
 
         gradient = self.criterion.derivative()
 
-        for layer in range(self.nlayers - 1, max(self.nlayers - self.num_bn_layers - 3, -1), -1):
+        for layer in range(self.nlayers - 1, self.num_bn_layers - 1, -1):
             gradient = gradient * self.activations[layer].derivative()
             gradient = self.linear_layers[layer].backward(gradient)
 
-        for layer in range(self.nlayers - self.num_bn_layers - 3, -1, -1):
+        for layer in range(self.num_bn_layers - 1, -1, -1):
             gradient = gradient * self.activations[layer].derivative()
             gradient = self.bn_layers[layer].backward(gradient)
             gradient = self.linear_layers[layer].backward(gradient)
