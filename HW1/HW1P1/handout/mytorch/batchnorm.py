@@ -47,14 +47,14 @@ class BatchNorm(object):
         """
 
         if eval:
-            norm = (x - self.running_mean) / np.sqrt(self.running_var ** 2 + self.eps)  # ???
+            norm = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)  # ???
             return self.gamma * norm + self.beta  # ???
 
         self.x = x
 
         self.mean = np.mean(x, axis=0, keepdims=True)
         self.var = np.sum((x - self.mean) ** 2, axis=0, keepdims=True) / x.shape[0]
-        self.norm = (x - self.mean) / np.sqrt(self.var ** 2 + self.eps)  # ???
+        self.norm = (x - self.mean) / np.sqrt(self.var + self.eps)  # ???
         self.out = self.gamma * self.norm + self.beta  # ???
 
         # Update running batch statistics
@@ -76,7 +76,7 @@ class BatchNorm(object):
         self.dbeta = np.sum(delta, axis=0, keepdims=True)
         self.dgamma = np.sum(delta * self.norm, axis=0, keepdims=True)
 
-        dvar = -0.5 * np.sum(dnorm * (self.x - self.mean) * np.power(self.mean + self.eps, -1.5),
+        dvar = -0.5 * np.sum(dnorm * (self.x - self.mean) * np.power(self.var + self.eps, -1.5),
                              axis=0, keepdims=True)
 
         dmean = -np.sum(dnorm * np.power(self.var + self.eps, -0.5), axis=0, keepdims=True) - 2 / \
