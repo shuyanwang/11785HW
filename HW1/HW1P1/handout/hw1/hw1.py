@@ -90,7 +90,15 @@ class MLP(object):
             out (np.array): (batch size, output_size)
         """
         # Complete the forward pass through your entire MLP.
-        raise NotImplemented
+        # raise NotImplemented
+
+        layer_id = 0
+        while layer_id < self.num_bn_layers:
+            x = self.activations[layer_id](
+                self.bn_layers[layer_id](self.linear_layers[layer_id](x)))
+        while layer_id < self.nlayers:
+            x = self.activations[layer_id](self.linear_layers[layer_id](x))
+        return x
 
     def zero_grads(self):
         # Use numpyArray.fill(0.0) to zero out your backpropped derivatives in each
