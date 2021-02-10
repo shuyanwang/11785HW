@@ -12,7 +12,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 is_load_model = True
 
-is_train = True
+is_train = False
 
 
 class HyperParameters:
@@ -54,20 +54,7 @@ class Dataset(torch.utils.data.Dataset):
 
 def main():
     writer = SummaryWriter('./logs', comment=str(HyperParameters.context_K))
-
-    train_X = os.path.join(data_dir, 'train.npy')  # N,?,40
-    train_Y = os.path.join(data_dir, 'train_labels.npy')  # N,?
-
-    valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
-    valid_Y = os.path.join(data_dir, 'dev_labels.npy')
-
     test_X = os.path.join(data_dir, 'test.npy')
-
-    train_loader = torch.utils.data.DataLoader(
-        Dataset(train_X, train_Y), batch_size=HyperParameters.batch_size, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(
-        Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
-
     test_loader = torch.utils.data.DataLoader(Dataset(test_X), batch_size=1, shuffle=False)
 
     model = nn.Sequential(nn.Linear(40 * (2 * HyperParameters.context_K + 1), 1024),
@@ -79,9 +66,20 @@ def main():
     model.double()
     if is_load_model:
         model.load_state_dict(
-            torch.load('checkpoints/model' + str(HyperParameters.context_K) + '.tar'))
+            torch.load('checkpoints/model' + str(HyperParameters.context_K) + '.tar')[
+                'model_state_dict'])
 
     if is_train:
+        train_X = os.path.join(data_dir, 'train.npy')  # N,?,40
+        train_Y = os.path.join(data_dir, 'train_labels.npy')  # N,?
+
+        valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
+        valid_Y = os.path.join(data_dir, 'dev_labels.npy')
+
+        train_loader = torch.utils.data.DataLoader(
+            Dataset(train_X, train_Y), batch_size=HyperParameters.batch_size, shuffle=True)
+        valid_loader = torch.utils.data.DataLoader(
+            Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
         train(model, train_loader, valid_loader, writer)
 
     test(model, test_loader)
@@ -90,13 +88,17 @@ def main():
     writer.close()
 
 
-def train(model, train_loader, valid_loader, writer):
+def train(model, train_loader, valid_loader, writer, epoch_cont=1):
     optimizer = torch.optim.Adam(model.parameters(), lr=HyperParameters.lr)
     criterion = nn.CrossEntropyLoss().cuda()
+    if is_load_model:
+        optimizer.load_state_dict(
+            torch.load('checkpoints/model' + str(HyperParameters.context_K) + '.tar')[
+                'optimizer_state_dict'])
 
     with torch.cuda.device(0):
         model.train()
-        for epoch in range(1, HyperParameters.max_epoch):
+        for epoch in range(epoch_cont, HyperParameters.max_epoch):
             # print('epoch: ', epoch)
             for i, batch in enumerate(train_loader):
                 bx = batch[0].to(device)
@@ -139,15 +141,18 @@ def evaluate(valid_loader, model, criterion, epoch, writer):
 
 
 def test(model, test_loader):
+    print('testing...')
     f = open('results/model' + str(HyperParameters.context_K) + '.csv', 'w')
     f.write('id,label\n')
     with torch.cuda.device(0):
         with torch.no_grad():
             model.eval()
             for i, item in enumerate(test_loader):
+                if i % 1000 == 0:
+                    print(i)
                 x = item.to(device)
                 label = torch.argmax(model(x), dim=1).item()
-                f.write(str(i) + str(int(label)))
+                f.write(str(i) + str(int(label)) + '\n')
     f.close()
 
 
