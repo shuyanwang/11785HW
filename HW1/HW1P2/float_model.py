@@ -24,7 +24,7 @@ class Dataset(torch.utils.data.Dataset):
         self.test = Y_dir is None
         self.N = X.shape[0]
         self.K = context_K
-        self.Y = np.load(Y_dir, allow_pickle=True) if not self.test else None  # N,?
+        self.Y = []  # N,?
         self.look_up = []
         pad_size = (self.K, 40)
         self.X = []  # N,[(K+?+K),40]
@@ -33,6 +33,11 @@ class Dataset(torch.utils.data.Dataset):
                                      torch.zeros(pad_size)], dim=0))
             for frame_id in range(x.shape[0]):
                 self.look_up.append((u_id, frame_id))
+
+        if not self.test:
+            Y = np.load(Y_dir, allow_pickle=True)
+            self.Y = [torch.as_tensor(y, dtype=torch.long) for y in Y]
+
         print(X_dir, self.__len__())
 
     def __getitem__(self, index) -> T_co:
@@ -41,7 +46,7 @@ class Dataset(torch.utils.data.Dataset):
             return torch.flatten(self.X[u_id][frame_id:self.K * 2 + frame_id + 1])
         else:
             return (torch.flatten(self.X[u_id][frame_id:self.K * 2 + frame_id + 1]),
-                    int(self.Y[u_id][frame_id]))
+                    self.Y[u_id][frame_id])
 
     def __len__(self):
         return len(self.look_up)
@@ -90,16 +95,17 @@ class Learning:
     def load_train(self):
         self.train_loader = torch.utils.data.DataLoader(
             Dataset(self.train_X, self.train_Y, self.params.K), batch_size=self.params.B,
-            shuffle=True)
+            shuffle=True, pin_memory=True, num_workers=4)
 
     def load_valid(self):
         self.valid_loader = torch.utils.data.DataLoader(
             Dataset(self.valid_X, self.valid_Y, self.params.K), batch_size=self.params.B,
-            shuffle=False)
+            shuffle=False, pin_memory=True, num_workers=4)
 
     def load_test(self):
         self.test_loader = torch.utils.data.DataLoader(
-            Dataset(self.test_X, None, self.params.K), batch_size=1, shuffle=False)
+            Dataset(self.test_X, None, self.params.K), batch_size=1,
+            shuffle=False, pin_memory=True, num_workers=4)
 
     def load_model(self, epoch=5):
         loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
@@ -132,6 +138,8 @@ class Learning:
                     total_loss += loss
                     y_prime = torch.argmax(prediction, dim=1)
                     total_acc += torch.count_nonzero(y_prime == by)
+
+                    # observed cuda usage oscillation
 
                     self.optimizer.zero_grad()
                     loss.backward()
