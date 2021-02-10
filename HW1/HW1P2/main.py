@@ -190,7 +190,7 @@ class Learning:
 
 def main():
     for k in [7, 11, 15]:
-        for b in [100000, 30000, 10000]:
+        for b in [65536, 32768, 8192]:
             for lr in [1e-4, 1e-3, 1e-2]:
                 learning = Learning(HyperParameters(k, b, lr))
                 learning.load_train()
