@@ -13,11 +13,12 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 is_load_model = True
 
 is_train = False
+is_eval = True
 
 
 class HyperParameters:
     context_K = 11
-    batch_size = 10000
+    batch_size = 32768
     lr = 1e-3
     max_epoch = 100000
 
@@ -82,6 +83,13 @@ def main():
             Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
         train(model, train_loader, valid_loader, writer)
 
+    if is_eval:
+        valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
+        valid_Y = os.path.join(data_dir, 'dev_labels.npy')
+        valid_loader = torch.utils.data.DataLoader(
+            Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
+        evaluate(valid_loader, model, nn.CrossEntropyLoss().cuda(), 0, writer)
+
     test(model, test_loader)
 
     writer.flush()
@@ -100,12 +108,15 @@ def train(model, train_loader, valid_loader, writer, epoch_cont=1):
         model.train()
         for epoch in range(epoch_cont, HyperParameters.max_epoch):
             # print('epoch: ', epoch)
+            total_loss = torch.zeros(1, device=device)
             for i, batch in enumerate(train_loader):
                 bx = batch[0].to(device)
                 by = batch[1].to(device)
 
                 prediction = model(bx)
                 loss = criterion(prediction, by)
+
+                total_loss += loss
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -114,7 +125,7 @@ def train(model, train_loader, valid_loader, writer, epoch_cont=1):
                 if i % 100 == 0:
                     print('epoch: ', epoch, 'iter: ', i)
 
-            writer.add_scalar('Loss/Train', loss, epoch)
+            writer.add_scalar('Loss/Train', total_loss.item() / (i + 1), epoch)
             if epoch % 10 == 0:
                 torch.save({
                     'epoch': epoch,
@@ -127,17 +138,27 @@ def train(model, train_loader, valid_loader, writer, epoch_cont=1):
 
 
 def evaluate(valid_loader, model, criterion, epoch, writer):
+    print('Validating...')
     with torch.cuda.device(0):
         with torch.no_grad():
             model.eval()
-            for bx, by in valid_loader:
-                bx = bx.to(device)
-                by = by.to(device)
+            total_loss = torch.zeros(1, device=device)
+            total_error = torch.zeros(1, device=device)
+            for i, batch in enumerate(valid_loader):
+                bx = batch[0].to(device)
+                by = batch[1].to(device)
 
                 prediction = model(bx)
                 loss = criterion(prediction, by)
+                total_loss += loss
+                y_prime = torch.argmax(prediction, dim=1)
+                total_error += (HyperParameters.batch_size - torch.count_nonzero(y_prime == by))
 
-                writer.add_scalar('Loss/Validation', loss, epoch)
+            loss_item = total_loss.item() / (i + 1)
+            error_item = total_error.item() / (i + 1) / HyperParameters.batch_size
+            writer.add_scalar('Loss/Validation', loss_item, epoch)
+            writer.add_scalar('Validation Error', error_item, epoch)
+            print('loss', loss_item, 'error', error_item)
 
 
 def test(model, test_loader):
@@ -152,7 +173,7 @@ def test(model, test_loader):
                     print(i)
                 x = item.to(device)
                 label = torch.argmax(model(x), dim=1).item()
-                f.write(str(i) + str(int(label)) + '\n')
+                f.write(str(i) + ',' + str(label) + '\n')
     f.close()
 
 
