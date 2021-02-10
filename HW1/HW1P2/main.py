@@ -29,8 +29,8 @@ class Dataset(torch.utils.data.Dataset):
         pad_size = (self.K, 40)
         self.X = []  # N,[(K+?+K),40]
         for u_id, x in enumerate(X):
-            self.X.append(torch.cat([torch.zeros(pad_size),
-                                     torch.from_numpy(x), torch.zeros(pad_size)], dim=0))
+            self.X.append(torch.cat([torch.zeros(pad_size), torch.as_tensor(x, dtype=torch.double),
+                                     torch.zeros(pad_size)], dim=0))
             for frame_id in range(x.shape[0]):
                 self.look_up.append((u_id, frame_id))
         print(X_dir, self.__len__())
@@ -90,16 +90,17 @@ class Learning:
     def load_train(self):
         self.train_loader = torch.utils.data.DataLoader(
             Dataset(self.train_X, self.train_Y, self.params.K), batch_size=self.params.B,
-            shuffle=True)
+            shuffle=True, pin_memory=True, num_workers=4)
 
     def load_valid(self):
         self.valid_loader = torch.utils.data.DataLoader(
             Dataset(self.valid_X, self.valid_Y, self.params.K), batch_size=self.params.B,
-            shuffle=False)
+            shuffle=False, pin_memory=True, num_workers=4)
 
     def load_test(self):
         self.test_loader = torch.utils.data.DataLoader(
-            Dataset(self.test_X, None, self.params.K), batch_size=1, shuffle=False)
+            Dataset(self.test_X, None, self.params.K), batch_size=1, shuffle=False,
+            pin_memory=True, num_workers=4)
 
     def load_model(self, epoch=5):
         loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
