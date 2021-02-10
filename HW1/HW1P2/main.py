@@ -97,7 +97,7 @@ def train(model, train_loader, valid_loader, writer):
     with torch.cuda.device(0):
         model.train()
         for epoch in range(1, HyperParameters.max_epoch):
-            print('epoch: ', epoch)
+            # print('epoch: ', epoch)
             for i, batch in enumerate(train_loader):
                 bx = batch[0].to(device)
                 by = batch[1].to(device)
@@ -109,7 +109,8 @@ def train(model, train_loader, valid_loader, writer):
                 loss.backward()
                 optimizer.step()
 
-                print('iter: ', i)
+                if i % 100 == 0:
+                    print('epoch: ', epoch, 'iter: ', i)
 
             writer.add_scalar('Loss/Train', loss, epoch)
             if epoch % 10 == 0:
