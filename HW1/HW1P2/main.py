@@ -5,15 +5,20 @@ import torch.nn as nn
 import torch.utils.data
 from torch.utils.data.dataset import T_co
 from torch.utils.tensorboard import SummaryWriter
+import csv
 
 data_dir = 'E:/11785_data/HW1'
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+is_load_model = True
+
+is_train = True
+
 
 class HyperParameters:
     context_K = 11
-    batch_size = 32768
+    batch_size = 10000
     lr = 1e-3
     max_epoch = 100000
 
@@ -47,33 +52,6 @@ class Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.look_up)
 
-    # @staticmethod
-    # def collate_fn(batch):
-    #     pass
-
-
-# class TestSet(torch.utils.data.Dataset):
-#     def __init__(self, X, context_K=HyperParameters.context_K):
-#         super(TestSet, self).__init__()
-#         self.K = context_K
-#         pad_size = (context_K, 40)
-#         self.X = []
-#
-#         for x in X:
-#             x_padded = torch.cat(
-#                 [torch.zeros(pad_size), torch.from_numpy(x), torch.zeros(pad_size)])
-#             for i in range(x.shape[0]):
-#                 self.X.append(torch.flatten(x_padded[i:i + 2 * context_K + 1]))
-#
-#         self.length = len(self.X)
-#         self.X = torch.stack(self.X)
-#
-#     def __getitem__(self, index) -> T_co:
-#         return self.X[index]
-#
-#     def __len__(self):
-#         return self.length
-
 
 def main():
     writer = SummaryWriter('./logs', comment=str(HyperParameters.context_K))
@@ -91,21 +69,7 @@ def main():
     valid_loader = torch.utils.data.DataLoader(
         Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
 
-    test_loader = torch.utils.data.DataLoader(
-        Dataset(test_X), batch_size=HyperParameters.batch_size, shuffle=False)
-
-    train(train_loader, valid_loader, writer)
-
-    writer.flush()
-    writer.close()
-
-
-def train(train_loader, valid_loader, writer):
-    # model = nn.Sequential(nn.Linear(40, 64), nn.BatchNorm1d(64), nn.ReLU(),
-    #                       nn.Linear(64, 128), nn.BatchNorm1d(128), nn.ReLU(),
-    #                       nn.Linear(128, 256), nn.BatchNorm1d(256), nn.ReLU(),
-    #                       nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(),
-    #                       nn.Linear(128, 71)).cuda()
+    test_loader = torch.utils.data.DataLoader(Dataset(test_X), batch_size=1, shuffle=False)
 
     model = nn.Sequential(nn.Linear(40 * (2 * HyperParameters.context_K + 1), 1024),
                           nn.BatchNorm1d(1024), nn.ReLU(),
@@ -113,8 +77,21 @@ def train(train_loader, valid_loader, writer):
                           nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
                           nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
                           nn.Linear(256, 71)).cuda()
-
     model.double()
+    if is_load_model:
+        model.load_state_dict(
+            torch.load('checkpoints/model' + str(HyperParameters.context_K) + '.tar'))
+
+    if is_train:
+        train(model, train_loader, valid_loader, writer)
+
+    test(model, test_loader)
+
+    writer.flush()
+    writer.close()
+
+
+def train(model, train_loader, valid_loader, writer):
     optimizer = torch.optim.Adam(model.parameters(), lr=HyperParameters.lr)
     criterion = nn.CrossEntropyLoss().cuda()
 
@@ -159,6 +136,19 @@ def evaluate(valid_loader, model, criterion, epoch, writer):
                 loss = criterion(prediction, by)
 
                 writer.add_scalar('Loss/Validation', loss, epoch)
+
+
+def test(model, test_loader):
+    f = open('results/model' + str(HyperParameters.context_K) + '.csv', 'w')
+    f.write('id,label\n')
+    with torch.cuda.device(0):
+        with torch.no_grad():
+            model.eval()
+            for i, item in enumerate(test_loader):
+                x = item.to(device)
+                label = torch.argmax(model(x), dim=1).item()
+                f.write(str(i) + str(int(label)))
+    f.close()
 
 
 if __name__ == '__main__':
