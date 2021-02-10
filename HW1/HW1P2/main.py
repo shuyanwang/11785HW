@@ -5,26 +5,21 @@ import torch.nn as nn
 import torch.utils.data
 from torch.utils.data.dataset import T_co
 from torch.utils.tensorboard import SummaryWriter
+from dataclasses import dataclass, field
 
 data_dir = 'E:/11785_data/HW1'
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-is_load_model = True
-
-is_train = False
-is_eval = True
-
-
+@dataclass
 class HyperParameters:
-    context_K = 11
-    batch_size = 32768
-    lr = 1e-3
-    max_epoch = 100000
+    K: int = field()
+    B: int = field()
+    lr: float = field(default=1e-3)
+    max_epoch: int = field(default=31)
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, X_dir, Y_dir=None, context_K=HyperParameters.context_K):
+    def __init__(self, X_dir, Y_dir, context_K):
         super(Dataset, self).__init__()
         X = np.load(X_dir, allow_pickle=True)
         self.test = Y_dir is None
@@ -53,128 +48,140 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.look_up)
 
 
+class Learning:
+    def __init__(self, params: HyperParameters):
+        self.params = params
+        self.str = 'k=' + str(self.params.K) + 'b=' + str(self.params.B) + 'lr=' + str(
+            self.params.lr)
+
+        print(str(self))
+
+        self.writer = SummaryWriter('./logs', comment=str(self))
+        self.train_X = os.path.join(data_dir, 'train.npy')  # N,?,40
+        self.train_Y = os.path.join(data_dir, 'train_labels.npy')  # N,?
+        self.valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
+        self.valid_Y = os.path.join(data_dir, 'dev_labels.npy')
+        self.test_X = os.path.join(data_dir, 'test.npy')
+
+        self.train_loader = None
+        self.valid_loader = None
+        self.test_loader = None
+
+        self.model = nn.Sequential(nn.Linear(40 * (2 * self.params.K + 1), 1024),
+                                   nn.BatchNorm1d(1024), nn.ReLU(),
+                                   nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
+                                   nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
+                                   nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
+                                   nn.Linear(256, 71)).cuda()
+        self.model.double()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params.lr)
+        self.criterion = nn.CrossEntropyLoss().cuda()
+
+        self.init_epoch = 1
+
+        self.device = torch.device("cuda:0")
+
+    def __del__(self):
+        self.writer.flush()
+        self.writer.close()
+
+    def __str__(self):
+        return self.str
+
+    def load_train(self):
+        self.train_loader = torch.utils.data.DataLoader(
+            Dataset(self.train_X, self.train_Y, self.params.K), batch_size=self.params.B,
+            shuffle=True)
+
+    def load_valid(self):
+        self.valid_loader = torch.utils.data.DataLoader(
+            Dataset(self.valid_X, self.valid_Y, self.params.K), batch_size=self.params.B,
+            shuffle=False)
+
+    def load_test(self):
+        self.test_loader = torch.utils.data.DataLoader(
+            Dataset(self.test_X, None, self.params.K), batch_size=1, shuffle=False)
+
+    def load_model(self):
+        loaded = torch.load('checkpoints/model' + str(self) + '.tar')
+        self.init_epoch = loaded['epoch']
+        self.model.load_state_dict(loaded['model_state_dict'])
+        self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
+
+    def train(self):
+        assert self.train_loader is not None
+        with torch.cuda.device(self.device):
+            self.model.train()
+            for epoch in range(self.init_epoch, self.params.max_epoch):
+                total_loss = torch.zeros(1, device=self.device)
+                for i, batch in enumerate(self.train_loader):
+                    bx = batch[0].to(self.device)
+                    by = batch[1].to(self.device)
+
+                    prediction = self.model(bx)
+                    loss = self.criterion(prediction, by)
+
+                    total_loss += loss
+
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
+
+                    if i % 100 == 0:
+                        print('epoch: ', epoch, 'iter: ', i)
+
+                self.writer.add_scalar('Loss/Train', total_loss.item() / (i + 1), epoch)
+                if epoch % 10 == 0:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimizer.state_dict(),
+                        'loss': loss,
+                    }, 'checkpoints/model' + str(self) + '.tar')
+                    self.evaluate(epoch)
+                    self.model.train()
+
+    def evaluate(self, epoch):
+        print('Validating...')
+        with torch.cuda.device(0):
+            with torch.no_grad():
+                self.model.eval()
+                total_loss = torch.zeros(1, device=self.device)
+                total_error = torch.zeros(1, device=self.device)
+                for i, batch in enumerate(self.valid_loader):
+                    bx = batch[0].to(self.device)
+                    by = batch[1].to(self.device)
+
+                    prediction = self.model(bx)
+                    loss = self.criterion(prediction, by)
+                    total_loss += loss
+                    y_prime = torch.argmax(prediction, dim=1)
+                    total_error += (self.params.B - torch.count_nonzero(y_prime == by))
+
+                loss_item = total_loss.item() / (i + 1)
+                error_item = total_error.item() / (i + 1) / self.params.B
+                self.writer.add_scalar('Loss/Validation', loss_item, epoch)
+                self.writer.add_scalar('Validation Error', error_item, epoch)
+                print('Validation loss', loss_item, 'error', error_item)
+
+    def test(self):
+        print('testing...')
+        f = open('results/model' + str(self) + '.csv', 'w')
+        f.write('id,label')
+        with torch.cuda.device(self.device):
+            with torch.no_grad():
+                self.model.eval()
+                for i, item in enumerate(self.test_loader):
+                    if i % 10000 == 0:
+                        print('testing: ', i)
+                    x = item.to(self.device)
+                    label = torch.argmax(self.model(x), dim=1).item()
+                    f.write('\n' + str(i) + ',' + str(label))
+        f.close()
+
+
 def main():
-    writer = SummaryWriter('./logs', comment=str(HyperParameters.context_K))
-    test_X = os.path.join(data_dir, 'test.npy')
-    test_loader = torch.utils.data.DataLoader(Dataset(test_X), batch_size=1, shuffle=False)
-
-    model = nn.Sequential(nn.Linear(40 * (2 * HyperParameters.context_K + 1), 1024),
-                          nn.BatchNorm1d(1024), nn.ReLU(),
-                          nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
-                          nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
-                          nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
-                          nn.Linear(256, 71)).cuda()
-    model.double()
-    if is_load_model:
-        model.load_state_dict(
-            torch.load('checkpoints/model' + str(HyperParameters.context_K) + '.tar')[
-                'model_state_dict'])
-
-    if is_train:
-        train_X = os.path.join(data_dir, 'train.npy')  # N,?,40
-        train_Y = os.path.join(data_dir, 'train_labels.npy')  # N,?
-
-        valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
-        valid_Y = os.path.join(data_dir, 'dev_labels.npy')
-
-        train_loader = torch.utils.data.DataLoader(
-            Dataset(train_X, train_Y), batch_size=HyperParameters.batch_size, shuffle=True)
-        valid_loader = torch.utils.data.DataLoader(
-            Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
-        train(model, train_loader, valid_loader, writer)
-
-    if is_eval:
-        valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
-        valid_Y = os.path.join(data_dir, 'dev_labels.npy')
-        valid_loader = torch.utils.data.DataLoader(
-            Dataset(valid_X, valid_Y), batch_size=HyperParameters.batch_size, shuffle=False)
-        evaluate(valid_loader, model, nn.CrossEntropyLoss().cuda(), 0, writer)
-
-    test(model, test_loader)
-
-    writer.flush()
-    writer.close()
-
-
-def train(model, train_loader, valid_loader, writer, epoch_cont=1):
-    optimizer = torch.optim.Adam(model.parameters(), lr=HyperParameters.lr)
-    criterion = nn.CrossEntropyLoss().cuda()
-    if is_load_model:
-        optimizer.load_state_dict(
-            torch.load('checkpoints/model' + str(HyperParameters.context_K) + '.tar')[
-                'optimizer_state_dict'])
-
-    with torch.cuda.device(0):
-        model.train()
-        for epoch in range(epoch_cont, HyperParameters.max_epoch):
-            # print('epoch: ', epoch)
-            total_loss = torch.zeros(1, device=device)
-            for i, batch in enumerate(train_loader):
-                bx = batch[0].to(device)
-                by = batch[1].to(device)
-
-                prediction = model(bx)
-                loss = criterion(prediction, by)
-
-                total_loss += loss
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                if i % 100 == 0:
-                    print('epoch: ', epoch, 'iter: ', i)
-
-            writer.add_scalar('Loss/Train', total_loss.item() / (i + 1), epoch)
-            if epoch % 10 == 0:
-                torch.save({
-                    'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': loss,
-                }, 'checkpoints/model' + str(HyperParameters.context_K) + '.tar')
-                evaluate(valid_loader, model, criterion, epoch, writer)
-                model.train()
-
-
-def evaluate(valid_loader, model, criterion, epoch, writer):
-    print('Validating...')
-    with torch.cuda.device(0):
-        with torch.no_grad():
-            model.eval()
-            total_loss = torch.zeros(1, device=device)
-            total_error = torch.zeros(1, device=device)
-            for i, batch in enumerate(valid_loader):
-                bx = batch[0].to(device)
-                by = batch[1].to(device)
-
-                prediction = model(bx)
-                loss = criterion(prediction, by)
-                total_loss += loss
-                y_prime = torch.argmax(prediction, dim=1)
-                total_error += (HyperParameters.batch_size - torch.count_nonzero(y_prime == by))
-
-            loss_item = total_loss.item() / (i + 1)
-            error_item = total_error.item() / (i + 1) / HyperParameters.batch_size
-            writer.add_scalar('Loss/Validation', loss_item, epoch)
-            writer.add_scalar('Validation Error', error_item, epoch)
-            print('loss', loss_item, 'error', error_item)
-
-
-def test(model, test_loader):
-    print('testing...')
-    f = open('results/model' + str(HyperParameters.context_K) + '.csv', 'w')
-    f.write('id,label')
-    with torch.cuda.device(0):
-        with torch.no_grad():
-            model.eval()
-            for i, item in enumerate(test_loader):
-                if i % 1000 == 0:
-                    print(i)
-                x = item.to(device)
-                label = torch.argmax(model(x), dim=1).item()
-                f.write('\n' + str(i) + ',' + str(label))
-    f.close()
+    pass
 
 
 if __name__ == '__main__':
