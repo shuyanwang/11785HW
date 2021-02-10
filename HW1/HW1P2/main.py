@@ -56,7 +56,7 @@ class Learning:
 
         print(str(self))
 
-        self.writer = SummaryWriter('./logs', comment=str(self))
+        self.writer = SummaryWriter(comment=str(self))
         self.train_X = os.path.join(data_dir, 'train.npy')  # N,?,40
         self.train_Y = os.path.join(data_dir, 'train_labels.npy')  # N,?
         self.valid_X = os.path.join(data_dir, 'dev.npy')  # N,?,40
@@ -123,14 +123,16 @@ class Learning:
             self.model.train()
             for epoch in range(self.init_epoch, self.params.max_epoch):
                 total_loss = torch.zeros(1, device=self.device)
+                total_acc = torch.zeros(1, device=self.device)
                 for i, batch in enumerate(self.train_loader):
                     bx = batch[0].to(self.device)
                     by = batch[1].to(self.device)
 
                     prediction = self.model(bx)
                     loss = self.criterion(prediction, by)
-
                     total_loss += loss
+                    y_prime = torch.argmax(prediction, dim=1)
+                    total_acc += torch.count_nonzero(y_prime == by)
 
                     self.optimizer.zero_grad()
                     loss.backward()
@@ -139,7 +141,9 @@ class Learning:
                     if i % 100 == 0:
                         print('epoch: ', epoch, 'iter: ', i)
                 loss_item = total_loss.item() / (i + 1)
+                accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
+                self.writer.add_scalar('Accuracy/Train', accuracy_item, epoch)
                 print('Training Loss: ', loss_item, 'epoch: ', epoch)
 
                 if epoch % 5 == 0:
@@ -154,7 +158,7 @@ class Learning:
             with torch.no_grad():
                 self.model.eval()
                 total_loss = torch.zeros(1, device=self.device)
-                total_error = torch.zeros(1, device=self.device)
+                total_acc = torch.zeros(1, device=self.device)
                 for i, batch in enumerate(self.valid_loader):
                     bx = batch[0].to(self.device)
                     by = batch[1].to(self.device)
@@ -163,13 +167,13 @@ class Learning:
                     loss = self.criterion(prediction, by)
                     total_loss += loss
                     y_prime = torch.argmax(prediction, dim=1)
-                    total_error += (self.params.B - torch.count_nonzero(y_prime == by))
+                    total_acc += torch.count_nonzero(y_prime == by)
 
                 loss_item = total_loss.item() / (i + 1)
-                error_item = total_error.item() / (i + 1) / self.params.B
+                accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
-                self.writer.add_scalar('Validation Error', error_item, epoch)
-                print('Validation loss', loss_item, 'error', error_item, 'epoch: ', epoch)
+                self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
+                print('Validation loss', loss_item, 'Accuracy', accuracy_item, 'epoch: ', epoch)
 
     def test(self):
         assert self.test_loader is not None
