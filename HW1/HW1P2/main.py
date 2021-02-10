@@ -107,7 +107,8 @@ def train(train_loader, valid_loader, writer):
     #                       nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(),
     #                       nn.Linear(128, 71)).cuda()
 
-    model = nn.Sequential(nn.Linear(40 * 23, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
+    model = nn.Sequential(nn.Linear(40 * (2 * HyperParameters.context_K + 1), 1024),
+                          nn.BatchNorm1d(1024), nn.ReLU(),
                           nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
                           nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
                           nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
