@@ -204,7 +204,7 @@ def learn(k, b, lr):
 
 
 # def main():
-#     for k in [15, 11, 7]:
+#     for k in [15, 11, 7]: # 7 bad
 #         for b in [65536, 32768, 8192]:
 #             for lr in [1e-4, 1e-3, 1e-2]:
 #                 learning = Learning(HyperParameters(k, b, lr))
@@ -218,12 +218,15 @@ def learn(k, b, lr):
 #                 del learning
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('data', type=str)
-    parser.add_argument('K', type=int)
-    parser.add_argument('B', type=int)
-    parser.add_argument('lr', type=float)
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('data', type=str)
+    # parser.add_argument('K', type=int)
+    # parser.add_argument('B', type=int)
+    # parser.add_argument('lr', type=float)
+    # args = parser.parse_args()
+    #
+    # data_dir = args.data
+    # learn(args.K, args.B, args.lr)
 
-    data_dir = args.data
-    learn(args.K, args.B, args.lr)
+    data_dir = 'E:\\11785_data\\HW1'
+    learn(19, 65536, 1e-4)
