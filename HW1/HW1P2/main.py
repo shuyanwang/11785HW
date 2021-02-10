@@ -15,7 +15,7 @@ class HyperParameters:
     K: int = field()
     B: int = field()
     lr: float = field(default=1e-3)
-    max_epoch: int = field(default=21)
+    max_epoch: int = field(default=16)
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -102,8 +102,8 @@ class Learning:
         self.test_loader = torch.utils.data.DataLoader(
             Dataset(self.test_X, None, self.params.K), batch_size=1, shuffle=False)
 
-    def load_model(self):
-        loaded = torch.load('checkpoints/model' + str(self) + '.tar')
+    def load_model(self, epoch=5):
+        loaded = torch.load('checkpoints/e=' + str(epoch) + str(self) + '.tar')
         self.init_epoch = loaded['epoch']
         self.model.load_state_dict(loaded['model_state_dict'])
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
@@ -114,7 +114,7 @@ class Learning:
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss': loss_item,
-        }, 'checkpoints/model' + str(self) + '.tar')
+        }, 'checkpoints/e=' + str(epoch) + str(self) + '.tar')
 
     def train(self):
         assert self.train_loader is not None
@@ -178,7 +178,7 @@ class Learning:
     def test(self):
         assert self.test_loader is not None
         print('testing...')
-        f = open('results/model' + str(self) + '.csv', 'w')
+        f = open('results/' + str(self) + '.csv', 'w')
         f.write('id,label')
         with torch.cuda.device(self.device):
             with torch.no_grad():
