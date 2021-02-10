@@ -103,7 +103,7 @@ class Learning:
             Dataset(self.test_X, None, self.params.K), batch_size=1, shuffle=False)
 
     def load_model(self, epoch=5):
-        loaded = torch.load('checkpoints/e=' + str(epoch) + str(self) + '.tar')
+        loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
         self.init_epoch = loaded['epoch']
         self.model.load_state_dict(loaded['model_state_dict'])
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
@@ -114,7 +114,7 @@ class Learning:
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss': loss_item,
-        }, 'checkpoints/e=' + str(epoch) + str(self) + '.tar')
+        }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
 
     def train(self):
         assert self.train_loader is not None
