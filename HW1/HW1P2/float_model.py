@@ -29,8 +29,8 @@ class Dataset(torch.utils.data.Dataset):
         pad_size = (self.K, 40)
         self.X = []  # N,[(K+?+K),40]
         for u_id, x in enumerate(X):
-            self.X.append(torch.cat([torch.zeros(pad_size),
-                                     torch.from_numpy(x), torch.zeros(pad_size)], dim=0))
+            self.X.append(torch.cat([torch.zeros(pad_size), torch.as_tensor(x, dtype=torch.float),
+                                     torch.zeros(pad_size)], dim=0))
             for frame_id in range(x.shape[0]):
                 self.look_up.append((u_id, frame_id))
         print(X_dir, self.__len__())
@@ -51,7 +51,7 @@ class Learning:
     def __init__(self, params: HyperParameters):
         self.params = params
         self.str = 'k=' + str(self.params.K) + 'b=' + str(self.params.B) + 'lr=' + str(
-            self.params.lr)
+            self.params.lr) + '_float'
 
         print(str(self))
 
@@ -72,7 +72,7 @@ class Learning:
                                    nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
                                    nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
                                    nn.Linear(256, 71)).cuda()
-        self.model.double()
+        # self.model.double()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params.lr)
         self.criterion = nn.CrossEntropyLoss().cuda()
 
@@ -229,5 +229,5 @@ if __name__ == '__main__':
     # learn(args.K, args.B, args.lr)
 
     data_dir = 'E:\\11785_data\\HW1'
-    learn(19, 65536, 1e-4)
-    learn(19, 65536, 1e-3)
+    learn(15, 65536 * 2, 1e-4)
+    # learn(19, 65536, 1e-3)
