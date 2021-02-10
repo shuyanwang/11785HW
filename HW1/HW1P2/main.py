@@ -164,7 +164,7 @@ def evaluate(valid_loader, model, criterion, epoch, writer):
 def test(model, test_loader):
     print('testing...')
     f = open('results/model' + str(HyperParameters.context_K) + '.csv', 'w')
-    f.write('id,label\n')
+    f.write('id,label')
     with torch.cuda.device(0):
         with torch.no_grad():
             model.eval()
@@ -173,7 +173,7 @@ def test(model, test_loader):
                     print(i)
                 x = item.to(device)
                 label = torch.argmax(model(x), dim=1).item()
-                f.write(str(i) + ',' + str(label) + '\n')
+                f.write('\n' + str(i) + ',' + str(label))
     f.close()
 
 
