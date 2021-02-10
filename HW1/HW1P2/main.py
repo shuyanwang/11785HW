@@ -1,3 +1,4 @@
+import argparse
 import os
 import numpy as np
 import torch
@@ -6,8 +7,6 @@ import torch.utils.data
 from torch.utils.data.dataset import T_co
 from torch.utils.tensorboard import SummaryWriter
 from dataclasses import dataclass, field
-
-data_dir = 'E:/11785_data/HW1'
 
 
 @dataclass
@@ -184,28 +183,47 @@ class Learning:
             with torch.no_grad():
                 self.model.eval()
                 for i, item in enumerate(self.test_loader):
-                    if i % 100000 == 0:
-                        print('testing: ', i)
+                    # if i % 100000 == 0:
+                    #     print('testing: ', i)
                     x = item.to(self.device)
                     label = torch.argmax(self.model(x), dim=1).item()
                     f.write('\n' + str(i) + ',' + str(label))
         f.close()
 
 
-def main():
-    for k in [15, 11, 7]:
-        for b in [65536, 32768, 8192]:
-            for lr in [1e-4, 1e-3, 1e-2]:
-                learning = Learning(HyperParameters(k, b, lr))
-                learning.load_train()
-                learning.load_valid()
-                learning.load_test()
+def learn(k, b, lr):
+    learning = Learning(HyperParameters(k, b, lr))
+    learning.load_train()
+    learning.load_valid()
+    learning.load_test()
 
-                learning.train()
-                learning.test()
+    learning.train()
+    learning.test()
 
-                del learning
+    del learning
 
+
+# def main():
+#     for k in [15, 11, 7]:
+#         for b in [65536, 32768, 8192]:
+#             for lr in [1e-4, 1e-3, 1e-2]:
+#                 learning = Learning(HyperParameters(k, b, lr))
+#                 learning.load_train()
+#                 learning.load_valid()
+#                 learning.load_test()
+#
+#                 learning.train()
+#                 learning.test()
+#
+#                 del learning
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('data', type=str)
+    parser.add_argument('K', type=int)
+    parser.add_argument('B', type=int)
+    parser.add_argument('lr', type=float)
+    args = parser.parse_args()
+
+    data_dir = args.data
+    learn(args.K, args.B, args.lr)
