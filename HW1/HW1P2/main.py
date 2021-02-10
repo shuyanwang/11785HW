@@ -184,7 +184,7 @@ class Learning:
             with torch.no_grad():
                 self.model.eval()
                 for i, item in enumerate(self.test_loader):
-                    if i % 10000 == 0:
+                    if i % 100000 == 0:
                         print('testing: ', i)
                     x = item.to(self.device)
                     label = torch.argmax(self.model(x), dim=1).item()
@@ -193,7 +193,7 @@ class Learning:
 
 
 def main():
-    for k in [7, 11, 15]:
+    for k in [15, 11, 7]:
         for b in [65536, 32768, 8192]:
             for lr in [1e-4, 1e-3, 1e-2]:
                 learning = Learning(HyperParameters(k, b, lr))
