@@ -15,7 +15,7 @@ class HyperParameters:
     K: int = field()
     B: int = field()
     lr: float = field(default=1e-3)
-    max_epoch: int = field(default=31)
+    max_epoch: int = field(default=21)
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -108,8 +108,17 @@ class Learning:
         self.model.load_state_dict(loaded['model_state_dict'])
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
 
+    def save_model(self, epoch, loss_item):
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'loss': loss_item,
+        }, 'checkpoints/model' + str(self) + '.tar')
+
     def train(self):
         assert self.train_loader is not None
+        print('Training...')
         with torch.cuda.device(self.device):
             self.model.train()
             for epoch in range(self.init_epoch, self.params.max_epoch):
@@ -129,19 +138,17 @@ class Learning:
 
                     if i % 100 == 0:
                         print('epoch: ', epoch, 'iter: ', i)
+                loss_item = total_loss.item() / (i + 1)
+                self.writer.add_scalar('Loss/Train', loss_item, epoch)
+                print('Training Loss: ', loss_item, 'epoch: ', epoch)
 
-                self.writer.add_scalar('Loss/Train', total_loss.item() / (i + 1), epoch)
-                if epoch % 10 == 0:
-                    torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimizer.state_dict(),
-                        'loss': loss,
-                    }, 'checkpoints/model' + str(self) + '.tar')
+                if epoch % 5 == 0:
+                    self.save_model(epoch, loss_item)
                     self.evaluate(epoch)
                     self.model.train()
 
     def evaluate(self, epoch):
+        assert self.valid_loader is not None
         print('Validating...')
         with torch.cuda.device(0):
             with torch.no_grad():
@@ -162,9 +169,10 @@ class Learning:
                 error_item = total_error.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Validation Error', error_item, epoch)
-                print('Validation loss', loss_item, 'error', error_item)
+                print('Validation loss', loss_item, 'error', error_item, 'epoch: ', epoch)
 
     def test(self):
+        assert self.test_loader is not None
         print('testing...')
         f = open('results/model' + str(self) + '.csv', 'w')
         f.write('id,label')
@@ -181,7 +189,18 @@ class Learning:
 
 
 def main():
-    pass
+    for k in [7, 11, 15]:
+        for b in [10000, 30000, 100000]:
+            for lr in [1e-4, 1e-3, 1e-2]:
+                learning = Learning(HyperParameters(k, b, lr))
+                learning.load_train()
+                learning.load_valid()
+                learning.load_test()
+
+                learning.train()
+                learning.test()
+
+                del learning
 
 
 if __name__ == '__main__':
