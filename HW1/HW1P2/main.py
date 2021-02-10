@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.utils.data
 from torch.utils.data.dataset import T_co
 from torch.utils.tensorboard import SummaryWriter
-import csv
 
 data_dir = 'E:/11785_data/HW1'
 
