@@ -1,4 +1,4 @@
-import argparse
+# import argparse
 import os
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ class HyperParameters:
     K: int = field()
     B: int = field()
     lr: float = field(default=1e-3)
-    max_epoch: int = field(default=21)
+    max_epoch: int = field(default=41)
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -95,17 +95,17 @@ class Learning:
     def load_train(self):
         self.train_loader = torch.utils.data.DataLoader(
             Dataset(self.train_X, self.train_Y, self.params.K), batch_size=self.params.B,
-            shuffle=True, pin_memory=True, num_workers=4)
+            shuffle=True, pin_memory=True, num_workers=6)
 
     def load_valid(self):
         self.valid_loader = torch.utils.data.DataLoader(
             Dataset(self.valid_X, self.valid_Y, self.params.K), batch_size=self.params.B,
-            shuffle=False, pin_memory=True, num_workers=4)
+            shuffle=False, pin_memory=True, num_workers=6)
 
     def load_test(self):
         self.test_loader = torch.utils.data.DataLoader(
             Dataset(self.test_X, None, self.params.K), batch_size=1,
-            shuffle=False, pin_memory=True, num_workers=4)
+            shuffle=False, pin_memory=True, num_workers=6)
 
     def load_model(self, epoch=5):
         loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
@@ -199,12 +199,13 @@ class Learning:
         f.close()
 
 
-def learn(k, b, lr):
+def learn(k, b, lr, load_epoch=None):
     learning = Learning(HyperParameters(k, b, lr))
     learning.load_train()
     learning.load_valid()
     learning.load_test()
-
+    if load_epoch is not None:
+        learning.load_model(epoch=load_epoch)
     learning.train()
     learning.test()
 
@@ -237,5 +238,5 @@ if __name__ == '__main__':
     # learn(args.K, args.B, args.lr)
 
     data_dir = 'E:\\11785_data\\HW1'
-    learn(15, 65536 * 2, 1e-4)
-    # learn(19, 65536, 1e-3)
+    # learn(15, 65536 * 2, 1e-4, load_epoch=20)
+    learn(19, 65536 * 2, 1e-3)
