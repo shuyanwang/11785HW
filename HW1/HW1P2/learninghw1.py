@@ -6,6 +6,8 @@ import torch.utils.data
 from torch.utils.data.dataset import T_co
 from utils.base import Params, Learning
 
+num_workers = 6
+
 
 class ParamsHW1(Params):
     def __init__(self, K, B, lr=1e-4, max_epoch=41, is_double=False):
@@ -68,17 +70,17 @@ class LearningHW1(Learning):
     def load_train(self):
         self.train_loader = torch.utils.data.DataLoader(
             DatasetHW1(self.train_X, self.train_Y, self.params.K), batch_size=self.params.B,
-            shuffle=True, pin_memory=True, num_workers=4)
+            shuffle=True, pin_memory=True, num_workers=num_workers)
 
     def load_valid(self):
         self.valid_loader = torch.utils.data.DataLoader(
             DatasetHW1(self.valid_X, self.valid_Y, self.params.K), batch_size=self.params.B,
-            shuffle=False, pin_memory=True, num_workers=4)
+            shuffle=False, pin_memory=True, num_workers=num_workers)
 
     def load_test(self):
         self.test_loader = torch.utils.data.DataLoader(
             DatasetHW1(self.test_X, None, self.params.K), batch_size=1, shuffle=False,
-            pin_memory=True, num_workers=4)
+            pin_memory=True, num_workers=num_workers)
 
     def load_model(self, epoch=5):
         loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
