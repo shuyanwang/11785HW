@@ -106,7 +106,8 @@ class Learning(ABC):
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
                 self.writer.add_scalar('Accuracy/Train', accuracy_item, epoch)
-                print('Training Loss: ', loss_item, 'epoch: ', epoch)
+                print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item,
+                      'Accuracy: ', "%.5f" % accuracy_item)
 
                 if epoch % 5 == 0:
                     self.save_model(epoch, loss_item)
@@ -135,7 +136,8 @@ class Learning(ABC):
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
-                print('Validation loss', loss_item, 'Accuracy', accuracy_item, 'epoch: ', epoch)
+                print('epoch: ', epoch, 'Validation Loss: ', "%.5f" % loss_item,
+                      'Accuracy: ', "%.5f" % accuracy_item)
 
     @abstractmethod
     def test(self):
