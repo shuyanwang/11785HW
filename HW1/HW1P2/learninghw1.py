@@ -6,7 +6,7 @@ import torch.utils.data
 from torch.utils.data.dataset import T_co
 from utils.base import Params, Learning
 
-num_workers = 6
+num_workers = 5
 
 
 class ParamsHW1(Params):
