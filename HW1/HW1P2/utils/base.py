@@ -30,7 +30,7 @@ class Learning(ABC):
         self.device = params.device
         self.str = str(params) + model.__class__.__name__
 
-        self.writer = SummaryWriter(comment=str(self))
+        self.writer = SummaryWriter('.runs/' + str(self))
 
         self.train_loader = None
         self.valid_loader = None
