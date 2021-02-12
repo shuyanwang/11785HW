@@ -3,9 +3,9 @@ import torch.nn.functional as functional
 import torch
 
 
-class MLP3(nn.Module):
+class MLP4(nn.Module):
     def __init__(self, K):
-        super(MLP3, self).__init__()
+        super(MLP4, self).__init__()
         self.l1 = PerceptronLayer(40 * (2 * K + 1), 512)
         self.l2 = PerceptronLayer(512, 256)
         self.l3 = PerceptronLayer(768, 256)
