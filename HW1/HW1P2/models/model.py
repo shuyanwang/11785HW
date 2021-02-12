@@ -76,6 +76,7 @@ class MLP4(nn.Module):
 
 
 class PerceptronLayer(nn.Module):
+    # Added dropout
     def __init__(self, c_in, c_out):
         super(PerceptronLayer, self).__init__()
         self.layer = nn.Sequential(nn.Linear(in_features=c_in, out_features=c_out),
@@ -84,5 +85,16 @@ class PerceptronLayer(nn.Module):
     def forward(self, x):
         return self.layer(x)
 
+
 class MLP5(nn.Module):
-    pass
+    def __init__(self, K):
+        super(MLP5, self).__init__()
+        self.mlp = nn.Sequential(PerceptronLayer(40 * (2 * K + 1), 1024),
+                                 PerceptronLayer(1024, 1024),
+                                 # PerceptronLayer(1024, 1024),
+                                 PerceptronLayer(1024, 512),
+                                 PerceptronLayer(512, 256),
+                                 PerceptronLayer(256, 71))
+
+    def forward(self, x):
+        return self.mlp(x)

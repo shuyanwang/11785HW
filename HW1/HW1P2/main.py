@@ -20,21 +20,37 @@ def main():
     # learner.learn()
     # del learner
 
-    params = ParamsHW1(lr=1e-3)
-    model = MLP4(params.K)
-    learner = LearningHW1(params, model)
-    learner.learn()
-
-    del learner
-
-    params = ParamsHW1()
-    model = MLP4(params.K)
-    learner = LearningHW1(params, model)
-    learner.load_model(epoch=5)
-    learner.learn()
-    del learner
+    # params = ParamsHW1(lr=1e-3)
+    # model = MLP4(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.learn()
+    #
+    # del learner
+    #
+    # params = ParamsHW1()
+    # model = MLP4(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.load_model(epoch=5)
+    # learner.learn()
+    # del learner
 
     # change lr to 1e-3
+
+    # params = ParamsHW1()
+    # model = MLP5(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.learn()
+
+    params = ParamsHW1(B=32768, is_double=True, max_epoch=51)
+    model = MLP5(params.K)
+    learner = LearningHW1(params, model)
+    learner.load_model(epoch=30)
+    learner.learn()
+
+    # params = ParamsHW1(lr=1e-3)
+    # model = MLP5(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.learn()
 
 
 if __name__ == '__main__':

@@ -43,7 +43,7 @@ class Learning(ABC):
         self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
         self.criterion = criterion_handle().cuda(self.device)
 
-        self.init_epoch = 1
+        self.init_epoch = 0
 
     def __del__(self):
         self.writer.flush()
@@ -83,7 +83,7 @@ class Learning(ABC):
         print('Training...')
         with torch.cuda.device(self.device):
             self.model.train()
-            for epoch in range(self.init_epoch, self.params.max_epoch):
+            for epoch in range(self.init_epoch + 1, self.params.max_epoch):
                 total_loss = torch.zeros(1, device=self.device)
                 total_acc = torch.zeros(1, device=self.device)
                 for i, batch in enumerate(self.train_loader):
