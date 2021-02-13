@@ -79,7 +79,9 @@ class Learning(ABC):
         }, 'checkpoints/' + str(self) + '_e=' + str(epoch) + '.tar')
 
     def train(self):
-        assert self.train_loader is not None
+        if self.train_loader is None:
+            self.load_train()
+
         print('Training...')
         with torch.cuda.device(self.device):
             self.model.train()
@@ -111,11 +113,13 @@ class Learning(ABC):
 
                 if epoch % 5 == 0:
                     self.save_model(epoch, loss_item)
-                    self.evaluate(epoch)
+                    self.validate(epoch)
                     self.model.train()
 
-    def evaluate(self, epoch):
-        assert self.valid_loader is not None
+    def validate(self, epoch):
+        if self.valid_loader is None:
+            self.load_valid()
+
         print('Validating...')
         with torch.cuda.device(0):
             with torch.no_grad():
@@ -142,10 +146,3 @@ class Learning(ABC):
     @abstractmethod
     def test(self):
         pass
-
-    def learn(self):
-        self.load_train()
-        self.load_valid()
-        self.load_test()
-        self.train()
-        self.test()

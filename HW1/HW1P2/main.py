@@ -41,15 +41,22 @@ def main():
     # learner = LearningHW1(params, model)
     # learner.learn()
 
-    params = ParamsHW1(B=32768, is_double=True, max_epoch=51)
-    model = MLP5(params.K)
-    learner = LearningHW1(params, model)
-    learner.load_model(epoch=30)
-    learner.learn()
-
     # params = ParamsHW1(lr=1e-3)
     # model = MLP5(params.K)
     # learner = LearningHW1(params, model)
+    # learner.learn()
+
+    params = ParamsHW1(B=32768, is_double=True, max_epoch=81, lr=1e-3)
+    model = MLP5(params.K)
+    learner = LearningHW1(params, model)
+    # learner.learn()
+    learner.load_model(65)
+    learner.test()
+
+    # params = ParamsHW1(B=32768, is_double=True, max_epoch=81)
+    # model = MLP5(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.load_model(epoch=50)
     # learner.learn()
 
 

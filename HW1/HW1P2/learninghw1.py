@@ -101,7 +101,8 @@ class LearningHW1(Learning):
         }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
 
     def test(self):
-        assert self.test_loader is not None
+        if self.test_loader is None:
+            self.load_test()
         print('testing...')
         with open('results/' + str(self) + '.csv', 'w') as f:
             f.write('id,label')
