@@ -69,19 +69,19 @@ class LearningHW1(Learning):
 
         self.dtype = torch.double if params.is_double else torch.float
 
-    def load_train(self):
+    def _load_train(self):
         self.train_loader = torch.utils.data.DataLoader(
             DatasetHW1(self.train_X, self.train_Y, self.params.K, self.dtype),
             batch_size=self.params.B,
             shuffle=True, pin_memory=True, num_workers=num_workers)
 
-    def load_valid(self):
+    def _load_valid(self):
         self.valid_loader = torch.utils.data.DataLoader(
             DatasetHW1(self.valid_X, self.valid_Y, self.params.K, self.dtype),
             batch_size=self.params.B,
             shuffle=False, pin_memory=True, num_workers=num_workers)
 
-    def load_test(self):
+    def _load_test(self):
         self.test_loader = torch.utils.data.DataLoader(
             DatasetHW1(self.test_X, None, self.params.K, self.dtype), batch_size=1, shuffle=False,
             pin_memory=True, num_workers=num_workers)
@@ -102,7 +102,7 @@ class LearningHW1(Learning):
 
     def test(self):
         if self.test_loader is None:
-            self.load_test()
+            self._load_test()
         print('testing...')
         with open('results/' + str(self) + '.csv', 'w') as f:
             f.write('id,label')

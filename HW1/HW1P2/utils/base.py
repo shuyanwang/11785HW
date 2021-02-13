@@ -53,15 +53,15 @@ class Learning(ABC):
         return self.str
 
     @abstractmethod
-    def load_train(self):
+    def _load_train(self):
         pass
 
     @abstractmethod
-    def load_valid(self):
+    def _load_valid(self):
         pass
 
     @abstractmethod
-    def load_test(self):
+    def _load_test(self):
         pass
 
     def load_model(self, epoch=5):
@@ -80,7 +80,7 @@ class Learning(ABC):
 
     def train(self):
         if self.train_loader is None:
-            self.load_train()
+            self._load_train()
 
         print('Training...')
         with torch.cuda.device(self.device):
@@ -113,12 +113,12 @@ class Learning(ABC):
 
                 if epoch % 5 == 0:
                     self.save_model(epoch, loss_item)
-                    self.validate(epoch)
+                    self._validate(epoch)
                     self.model.train()
 
-    def validate(self, epoch):
+    def _validate(self, epoch):
         if self.valid_loader is None:
-            self.load_valid()
+            self._load_valid()
 
         print('Validating...')
         with torch.cuda.device(0):

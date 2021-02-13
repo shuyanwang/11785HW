@@ -59,6 +59,12 @@ def main():
     # learner.load_model(epoch=50)
     # learner.learn()
 
+    params = ParamsHW1(B=32768, is_double=False, max_epoch=81, lr=1e-3)
+    model = MLP5(params.K)
+    learner = LearningHW1(params, model)
+    learner.train()
+    learner.test()
+
 
 if __name__ == '__main__':
     main()
