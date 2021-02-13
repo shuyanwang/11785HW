@@ -46,12 +46,12 @@ def main():
     # learner = LearningHW1(params, model)
     # learner.learn()
 
-    params = ParamsHW1(B=32768, is_double=True, max_epoch=81, lr=1e-3)
-    model = MLP5(params.K)
-    learner = LearningHW1(params, model)
-    # learner.learn()
-    learner.load_model(65)
-    learner.test()
+    # params = ParamsHW1(B=32768, is_double=True, max_epoch=81, lr=1e-3)
+    # model = MLP5(params.K)
+    # learner = LearningHW1(params, model)
+    # # learner.learn()
+    # learner.load_model(65)
+    # learner.test()
 
     # params = ParamsHW1(B=32768, is_double=True, max_epoch=81)
     # model = MLP5(params.K)
@@ -59,11 +59,13 @@ def main():
     # learner.load_model(epoch=50)
     # learner.learn()
 
-    params = ParamsHW1(B=32768, is_double=False, max_epoch=81, lr=1e-3)
+    params = ParamsHW1(B=32768, is_double=False, max_epoch=101, lr=1e-3)
     model = MLP5(params.K)
     learner = LearningHW1(params, model)
     learner.train()
     learner.test()
+
+    # DO NOT USE DOUBLE, ALSO DO NOT PUSH B TO EXTREME
 
 
 if __name__ == '__main__':
