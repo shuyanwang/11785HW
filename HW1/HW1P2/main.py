@@ -59,11 +59,11 @@ def main():
     # learner.load_model(epoch=50)
     # learner.learn()
 
-    params = ParamsHW1(B=32768, is_double=False, max_epoch=101, lr=1e-3)
-    model = MLP5(params.K)
-    learner = LearningHW1(params, model)
-    learner.train()
-    learner.test()
+    # params = ParamsHW1(B=32768, is_double=False, max_epoch=101, lr=1e-3)
+    # model = MLP5(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.train()
+    # learner.test()
 
     # DO NOT USE DOUBLE, ALSO DO NOT PUSH B TO EXTREME
 

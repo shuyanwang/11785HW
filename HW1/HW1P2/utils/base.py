@@ -111,8 +111,10 @@ class Learning(ABC):
                 print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item,
                       'Accuracy: ', "%.5f" % accuracy_item)
 
-                if epoch % 5 == 0:
+                if epoch % 20 == 0:
                     self.save_model(epoch, loss_item)
+
+                if epoch % 5 == 0:
                     self._validate(epoch)
                     self.model.train()
 
