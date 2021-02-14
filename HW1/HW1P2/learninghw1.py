@@ -110,6 +110,8 @@ class LearningHW1(Learning):
                 with torch.no_grad():
                     self.model.eval()
                     for i, item in enumerate(self.test_loader):
+                        if i % 100000 == 0:
+                            print(i)
                         x = item.to(self.device)
                         label = torch.argmax(self.model(x), dim=1).item()
                         f.write('\n' + str(i) + ',' + str(label))

@@ -67,6 +67,13 @@ def main():
 
     # DO NOT USE DOUBLE, ALSO DO NOT PUSH B TO EXTREME
 
+    params = ParamsHW1(B=32768, is_double=False, max_epoch=201, lr=1e-3)
+    model = MLP5(params.K)
+    learner = LearningHW1(params, model)
+    learner.load_model(epoch=100)
+    learner.train()
+    learner.test()
+
 
 if __name__ == '__main__':
     main()
