@@ -14,7 +14,7 @@ class Params(ABC):
     B: int = field()
     data_dir: str = field()
     lr: float = field(default=1e-3)
-    max_epoch: int = field(default=41)
+    max_epoch: int = field(default=101)
     is_double: int = field(default=False)
     device: torch.device = field(default=torch.device("cuda:0"))
 
