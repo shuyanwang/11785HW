@@ -116,3 +116,25 @@ class MLP6(nn.Module):
         l3 = self.l3(l1 + l2)
         l4 = self.l4(l2 + l3)
         return self.l6(self.l5(l4))
+
+
+class MLP7(nn.Module):
+    def __init__(self, K):
+        super(MLP7, self).__init__()
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 1024)
+        self.l2 = PerceptronLayer(1024, 1024)
+        self.l3 = PerceptronLayer(1024, 1024)
+        self.l4 = PerceptronLayer(1024, 1024)
+        self.l5 = PerceptronLayer(1024, 1024)
+        self.l6 = PerceptronLayer(1024, 512)
+        self.l7 = PerceptronLayer(512, 256)
+        self.l8 = PerceptronLayer(256, 71)
+
+    def forward(self, x):
+        l1 = self.l1(x)
+        l2 = self.l2(l1)
+        l3 = self.l3(l1 + l2)
+        l4 = self.l4(l2 + l3)
+        l5 = self.l5(l3 + l4)
+        l6 = self.l6(l4 + l5)
+        return self.l8(self.l7(l6))

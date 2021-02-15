@@ -70,7 +70,8 @@ def main():
     params = ParamsHW1(B=32768, is_double=False, max_epoch=201, lr=1e-3)
     model = MLP6(params.K)
     learner = LearningHW1(params, model)
-    learner.train()
+    # learner.train()
+    learner.load_model(140)
     learner.test()
 
 
