@@ -98,3 +98,21 @@ class MLP5(nn.Module):
 
     def forward(self, x):
         return self.mlp(x)
+
+
+class MLP6(nn.Module):
+    def __init__(self, K):
+        super(MLP6, self).__init__()
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 1024)
+        self.l2 = PerceptronLayer(1024, 1024)
+        self.l3 = PerceptronLayer(1024, 1024)
+        self.l4 = PerceptronLayer(1024, 512)
+        self.l5 = PerceptronLayer(512, 256)
+        self.l6 = PerceptronLayer(256, 71)
+
+    def forward(self, x):
+        l1 = self.l1(x)
+        l2 = self.l2(l1)
+        l3 = self.l3(l1 + l2)
+        l4 = self.l4(l2 + l3)
+        return self.l6(self.l5(l4))
