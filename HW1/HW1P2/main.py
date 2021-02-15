@@ -68,10 +68,10 @@ def main():
     # DO NOT USE DOUBLE, ALSO DO NOT PUSH B TO EXTREME
 
     params = ParamsHW1(B=32768, is_double=False, max_epoch=201, lr=1e-3)
-    model = MLP6(params.K)
+    model = MLP7(params.K)
     learner = LearningHW1(params, model)
-    # learner.train()
-    learner.load_model(140)
+    learner.train()
+    # learner.load_model(140)
     learner.test()
 
 
