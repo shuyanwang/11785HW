@@ -1,5 +1,3 @@
-import os
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.data
@@ -108,19 +106,18 @@ class Learning(ABC):
                 print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item,
                       'Accuracy: ', "%.5f" % accuracy_item)
 
+                self._validate(epoch)
+                self.model.train()
+
                 if epoch % 20 == 0:
                     self.save_model(epoch, loss_item)
-
-                if epoch % 5 == 0:
-                    self._validate(epoch)
-                    self.model.train()
 
     def _validate(self, epoch):
         if self.valid_loader is None:
             self._load_valid()
 
-        print('Validating...')
-        with torch.cuda.device(0):
+        # print('Validating...')
+        with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
                 total_loss = torch.zeros(1, device=self.device)
