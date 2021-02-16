@@ -3,10 +3,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.data
-from torch.utils.data.dataset import T_co
 from torch.utils.tensorboard import SummaryWriter
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from tqdm import tqdm
 
 
 @dataclass
@@ -88,7 +88,7 @@ class Learning(ABC):
             for epoch in range(self.init_epoch + 1, self.params.max_epoch):
                 total_loss = torch.zeros(1, device=self.device)
                 total_acc = torch.zeros(1, device=self.device)
-                for i, batch in enumerate(self.train_loader):
+                for i, batch in enumerate(tqdm(self.train_loader)):
                     bx = batch[0].to(self.device)
                     by = batch[1].to(self.device)
 
@@ -101,9 +101,6 @@ class Learning(ABC):
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
-
-                    if i % 100 == 0:
-                        print('epoch: ', epoch, 'iter: ', i)
                 loss_item = total_loss.item() / (i + 1)
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)

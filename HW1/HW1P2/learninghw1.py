@@ -5,8 +5,9 @@ import torch.nn as nn
 import torch.utils.data
 from torch.utils.data.dataset import T_co
 from utils.base import Params, Learning
+from tqdm import tqdm
 
-num_workers = 8
+num_workers = 6
 
 
 class ParamsHW1(Params):
@@ -109,9 +110,7 @@ class LearningHW1(Learning):
             with torch.cuda.device(self.device):
                 with torch.no_grad():
                     self.model.eval()
-                    for i, item in enumerate(self.test_loader):
-                        if i % 100000 == 0:
-                            print(i)
+                    for i, item in enumerate(tqdm(self.test_loader)):
                         x = item.to(self.device)
                         label = torch.argmax(self.model(x), dim=1).item()
                         f.write('\n' + str(i) + ',' + str(label))
