@@ -182,3 +182,18 @@ class MLP9(nn.Module):
         l1 = self.l1(x)
         skip = self.skip(l1)
         return self.l3(self.l2(skip))
+
+
+# consider using broader networks with a smaller B
+
+class MLP10(nn.Module):
+    def __init__(self, K):
+        super(MLP10, self).__init__()
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096)
+        self.skip = MLPSkipConnections(4096, 2048, 5)
+        self.l2 = PerceptronLayer(2048, 1024)
+        self.l3 = PerceptronLayer(1024, 256)
+        self.l4 = PerceptronLayer(256, 71)
+
+    def forward(self, x):
+        return self.l4(self.l3(self.l2(self.skip(self.l1(x)))))
