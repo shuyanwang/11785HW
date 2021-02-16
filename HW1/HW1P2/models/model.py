@@ -138,3 +138,47 @@ class MLP7(nn.Module):
         l5 = self.l5(l3 + l4)
         l6 = self.l6(l4 + l5)
         return self.l8(self.l7(l6))
+
+
+class MLPSkipConnections(nn.Module):
+    def __init__(self, in_channels, out_channels, num_layers):
+        super(MLPSkipConnections, self).__init__()
+        self.layers = [PerceptronLayer(in_channels, in_channels) for _ in range(1, num_layers)]
+        self.layers.append(PerceptronLayer(in_channels, out_channels))
+        self.layers = nn.ModuleList(self.layers)
+
+    def forward(self, x):
+        x1 = self.layers[0](x)
+        for i in range(1, len(self.layers)):
+            in_vector = x + x1
+            x = x1
+            x1 = self.layers[i](in_vector)
+        return x1
+
+
+class MLP8(nn.Module):
+    def __init__(self, K):
+        super(MLP8, self).__init__()
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 1024)
+        self.skip = MLPSkipConnections(1024, 512, 9)
+        self.l2 = PerceptronLayer(512, 256)
+        self.l3 = PerceptronLayer(256, 71)
+
+    def forward(self, x):
+        l1 = self.l1(x)
+        skip = self.skip(l1)
+        return self.l3(self.l2(skip))
+
+
+class MLP9(nn.Module):
+    def __init__(self, K):
+        super(MLP9, self).__init__()
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 2048)
+        self.skip = MLPSkipConnections(2048, 1024, 5)
+        self.l2 = PerceptronLayer(1024, 256)
+        self.l3 = PerceptronLayer(256, 71)
+
+    def forward(self, x):
+        l1 = self.l1(x)
+        skip = self.skip(l1)
+        return self.l3(self.l2(skip))

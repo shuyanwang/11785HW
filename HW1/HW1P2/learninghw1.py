@@ -6,11 +6,11 @@ import torch.utils.data
 from torch.utils.data.dataset import T_co
 from utils.base import Params, Learning
 
-num_workers = 6
+num_workers = 8
 
 
 class ParamsHW1(Params):
-    def __init__(self, K=15, B=32768, lr=1e-3, max_epoch=101, is_double=False):
+    def __init__(self, K=15, B=32768, lr=1e-3, max_epoch=201, is_double=False):
         super(ParamsHW1, self).__init__(B=B, lr=lr, max_epoch=max_epoch,
                                         data_dir='E:/11785_data/HW1', is_double=is_double)
         self.K = K
