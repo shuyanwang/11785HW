@@ -91,7 +91,7 @@ class LearningHW1(Learning):
     def test(self):
         if self.test_loader is None:
             self._load_test()
-        print('testing...')
+        # print('testing...')
         with open('results/' + str(self) + '.csv', 'w') as f:
             f.write('id,label')
             with torch.cuda.device(self.device):
