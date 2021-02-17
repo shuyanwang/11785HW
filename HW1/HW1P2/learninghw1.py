@@ -11,9 +11,10 @@ num_workers = 6
 
 
 class ParamsHW1(Params):
-    def __init__(self, K=15, B=32768, lr=1e-3, max_epoch=201, is_double=False):
+    def __init__(self, K=15, B=32768, lr=1e-3, max_epoch=201, is_double=False,
+                 data_dir='E:/11785_data/HW1'):
         super(ParamsHW1, self).__init__(B=B, lr=lr, max_epoch=max_epoch,
-                                        data_dir='E:/11785_data/HW1', is_double=is_double)
+                                        data_dir=data_dir, is_double=is_double)
         self.K = K
         self.str = 'k=' + str(self.K) + 'b=' + str(self.B) + 'lr=' + str(
             self.lr) + ('_double_' if is_double else '_float_')

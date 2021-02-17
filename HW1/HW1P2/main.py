@@ -81,7 +81,7 @@ def main():
     # learner.load_model(100)
     # learner.test()
 
-    params = ParamsHW1(B=8192)
+    params = ParamsHW1(B=16384, data_dir='/home/ubuntu/11785_data/HW1')
     model = MLP10(params.K)
     learner = LearningHW1(params, model)
     learner.train()
@@ -90,3 +90,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

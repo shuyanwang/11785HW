@@ -1,21 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="ubuntu@ec2-3-14-12-189.us-east-2.compute.amazonaws.com:22" remoteFilesAllowedToDisappearOnAutoupload="false">
-    <serverData>
-      <paths name="ubuntu@18.222.187.154:22">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="ubuntu@ec2-3-14-12-189.us-east-2.compute.amazonaws.com:22">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/home/ubuntu/11785_scripts/HW1/HW1P2" local="$PROJECT_DIR$" />
-          </mappings>
-        </serverdata>
-      </paths>
-    </serverData>
+  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>
