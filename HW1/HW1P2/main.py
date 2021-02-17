@@ -81,13 +81,13 @@ def main():
     # learner.load_model(100)
     # learner.test()
 
-    params = ParamsHW1(B=16384, data_dir='/home/ubuntu/11785_data/HW1')
+    params = ParamsHW1(B=8192)
     model = MLP10(params.K)
     learner = LearningHW1(params, model)
-    learner.train()
+    # learner.train()
+    learner.load_model(60)
     learner.test()
 
 
 if __name__ == '__main__':
     main()
-

@@ -88,20 +88,6 @@ class LearningHW1(Learning):
             DatasetHW1(self.test_X, None, self.params.K, self.dtype), batch_size=1, shuffle=False,
             pin_memory=True, num_workers=num_workers)
 
-    def load_model(self, epoch=5):
-        loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
-        self.init_epoch = loaded['epoch']
-        self.model.load_state_dict(loaded['model_state_dict'])
-        self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
-
-    def save_model(self, epoch, loss_item):
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'loss': loss_item,
-        }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
-
     def test(self):
         if self.test_loader is None:
             self._load_test()

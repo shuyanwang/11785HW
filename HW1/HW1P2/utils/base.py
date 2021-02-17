@@ -62,8 +62,8 @@ class Learning(ABC):
     def _load_test(self):
         pass
 
-    def load_model(self, epoch=5):
-        loaded = torch.load('checkpoints/' + str(self) + '_e=' + str(epoch) + '.tar')
+    def load_model(self, epoch=20):
+        loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
         self.init_epoch = loaded['epoch']
         self.model.load_state_dict(loaded['model_state_dict'])
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
@@ -74,7 +74,7 @@ class Learning(ABC):
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss': loss_item,
-        }, 'checkpoints/' + str(self) + '_e=' + str(epoch) + '.tar')
+        }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
 
     def train(self):
         if self.train_loader is None:
