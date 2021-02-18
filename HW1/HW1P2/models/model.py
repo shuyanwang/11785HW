@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
+from utils.base import Model
 
 
 class MLP1(nn.Module):
@@ -186,9 +187,19 @@ class MLP9(nn.Module):
 
 # consider using broader networks with a smaller B
 
-class MLP10(nn.Module):
+#### From MLP10, models should inherit Model (in base.py), not nn.Module
+# This is for visualizing graphs
+# To train/validate/test MLP1-9, change the base class and add the input-dims property
+# Performance should not be affected, as input_dims are only used for creating a dummy input
+
+class MLP10(Model):
+    @property
+    def input_dims(self):
+        return [40 * (2 * self.K + 1)]  # Batch dim not included
+
     def __init__(self, K):
         super(MLP10, self).__init__()
+        self.K = K
         self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096)
         self.skip = MLPSkipConnections(4096, 2048, 5)
         self.l2 = PerceptronLayer(2048, 1024)

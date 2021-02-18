@@ -5,6 +5,17 @@ from torch.utils.tensorboard import SummaryWriter
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from tqdm import tqdm
+from typing import List
+
+
+class Model(nn.Module, ABC):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    @abstractmethod
+    def input_dims(self) -> List:
+        pass
 
 
 @dataclass
@@ -22,7 +33,7 @@ class Params(ABC):
 
 
 class Learning(ABC):
-    def __init__(self, params, model: nn.Module, optimizer_handle, criterion_handle):
+    def __init__(self, params, model: Model, optimizer_handle, criterion_handle):
 
         self.params = params
         self.device = params.device
@@ -37,6 +48,8 @@ class Learning(ABC):
         self.model = model.cuda(self.device)
         if params.is_double:
             self.model.double()
+
+        self.writer.add_graph(model, torch.rand([params.B] + model.input_dims, device=self.device))
 
         self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
         self.criterion = criterion_handle().cuda(self.device)
