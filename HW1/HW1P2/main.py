@@ -85,6 +85,7 @@ def main():
     model = MLP10(params.K)
     learner = LearningHW1(params, model)
     learner.load_model(40)
+    learner.train()
     learner.test()
 
 

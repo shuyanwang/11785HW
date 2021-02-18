@@ -122,7 +122,7 @@ class Learning(ABC):
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 20 == 0:
+                if epoch % 5 == 0:
                     self.save_model(epoch, loss_item)
 
     def _validate(self, epoch):

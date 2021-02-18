@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 from utils.base import Model
+from typing import List
 
 
 class MLP1(nn.Module):
@@ -208,3 +209,29 @@ class MLP10(Model):
 
     def forward(self, x):
         return self.l4(self.l3(self.l2(self.skip(self.l1(x)))))
+
+
+class MLP11(Model):
+    @property
+    def input_dims(self) -> List:
+        return [40 * (2 * self.K + 1)]
+
+    def __init__(self, K):
+        super(MLP11, self).__init__()
+        self.K = K
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096)
+        self.l2 = PerceptronLayer(4096, 4096)
+        self.l3 = PerceptronLayer(4096, 4096)
+        self.l4 = PerceptronLayer(4096, 4096)
+        self.l5 = PerceptronLayer(4096, 4096)
+
+        self.classifier = nn.Sequential(PerceptronLayer(4096, 2048),
+                                        PerceptronLayer(2048, 1024),
+                                        PerceptronLayer(1024, 256),
+                                        PerceptronLayer(256, 71))
+
+    def forward(self, x):
+        x1 = self.l1(x)
+        x3 = self.l3(x1 + self.l2(x1))
+        x5 = self.l5(x3 + self.l4(x3))
+        return self.classifier(x5)
