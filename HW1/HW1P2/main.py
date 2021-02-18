@@ -1,5 +1,5 @@
 from learninghw1 import LearningHW1, ParamsHW1
-from models.model import *
+from models import *
 
 
 def main():
