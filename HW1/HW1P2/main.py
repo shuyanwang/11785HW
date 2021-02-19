@@ -87,6 +87,12 @@ def main():
     learner.train()
     learner.test()
 
+    # params = ParamsHW1(B=8192, K=30, dropout=0.4)
+    # model = MLP13(params.K, params.dropout)
+    # learner = LearningHW1(params, model)
+    # learner.train()
+    # learner.test()
+
 
 if __name__ == '__main__':
     main()

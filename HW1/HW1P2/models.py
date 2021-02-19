@@ -79,10 +79,10 @@ class MLP4(nn.Module):
 
 class PerceptronLayer(nn.Module):
     # Added dropout
-    def __init__(self, c_in, c_out):
+    def __init__(self, c_in, c_out, dropout=0.5):
         super(PerceptronLayer, self).__init__()
         self.layer = nn.Sequential(nn.Linear(in_features=c_in, out_features=c_out),
-                                   nn.BatchNorm1d(c_out), nn.Dropout(), nn.ReLU())
+                                   nn.BatchNorm1d(c_out), nn.Dropout(dropout), nn.ReLU())
 
     def forward(self, x):
         return self.layer(x)
@@ -254,6 +254,32 @@ class MLP12(Model):
         self.l7 = PerceptronLayer(4096, 4096)
 
         self.l8 = PerceptronLayer(4096, 71)
+
+    def forward(self, x):
+        x1 = self.l1(x)
+        x3 = self.l3(x1 + self.l2(x1))
+        x5 = self.l5(x3 + self.l4(x3))
+        x7 = self.l7(x5 + self.l6(x5))
+        return self.l8(x7)
+
+
+class MLP13(Model):
+    @property
+    def input_dims(self) -> List:
+        return [40 * (2 * self.K + 1)]
+
+    def __init__(self, K, dropout):
+        super().__init__()
+        self.K = K
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096, dropout)
+        self.l2 = PerceptronLayer(4096, 4096, dropout)
+        self.l3 = PerceptronLayer(4096, 4096, dropout)
+        self.l4 = PerceptronLayer(4096, 4096, dropout)
+        self.l5 = PerceptronLayer(4096, 4096, dropout)
+        self.l6 = PerceptronLayer(4096, 4096, dropout)
+        self.l7 = PerceptronLayer(4096, 4096, dropout)
+
+        self.l8 = PerceptronLayer(4096, 71, dropout)
 
     def forward(self, x):
         x1 = self.l1(x)
