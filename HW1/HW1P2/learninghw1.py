@@ -59,7 +59,7 @@ class DatasetHW1(torch.utils.data.Dataset):
 
 
 class LearningHW1(Learning):
-    def __init__(self, params: ParamsHW1, model: nn.Module):
+    def __init__(self, params: ParamsHW1, model):
         super(LearningHW1, self).__init__(params, model, torch.optim.Adam, nn.CrossEntropyLoss)
         print(str(self))
 
