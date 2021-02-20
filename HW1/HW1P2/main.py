@@ -81,17 +81,18 @@ def main():
     # learner.load_model(100)
     # learner.test()
 
-    params = ParamsHW1(B=8192, K=30)
-    model = MLP12(params.K)
+    # params = ParamsHW1(B=8192, K=30)
+    # model = MLP12(params.K)
+    # learner = LearningHW1(params, model)
+    # learner.load_model(40)
+    # # learner.train()
+    # learner.test()
+
+    params = ParamsHW1(B=8192, K=30, dropout=0.3)
+    model = MLP13(params.K, params.dropout)
     learner = LearningHW1(params, model)
     learner.train()
     learner.test()
-
-    # params = ParamsHW1(B=8192, K=30, dropout=0.4)
-    # model = MLP13(params.K, params.dropout)
-    # learner = LearningHW1(params, model)
-    # learner.train()
-    # learner.test()
 
 
 if __name__ == '__main__':
