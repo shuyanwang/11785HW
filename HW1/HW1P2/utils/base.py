@@ -17,6 +17,10 @@ class Model(nn.Module, ABC):
     def input_dims(self) -> List:
         pass
 
+    @abstractmethod
+    def forward(self, x):
+        pass
+
 
 @dataclass
 class Params(ABC):
