@@ -88,10 +88,9 @@ def main():
     # # learner.train()
     # learner.test()
 
-    params = ParamsHW1(B=1024, K=30, dropout=0.5)
-    model = MLP13(params.K, params.dropout)
+    params = ParamsHW1(B=8192, K=30, dropout=0.5)
+    model = MLP15(params.K, params.dropout)
     learner = LearningHW1(params, model)
-    learner.load_model(5)
     learner.train()
     learner.test()
 

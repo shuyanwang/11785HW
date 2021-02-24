@@ -290,11 +290,21 @@ class MLP13(Model):
 
 
 class PerceptronNoBN(nn.Module):
-    # Added dropout
     def __init__(self, c_in, c_out, dropout=0.5):
         super().__init__()
         self.layer = nn.Sequential(nn.Linear(in_features=c_in, out_features=c_out),
                                    nn.Dropout(dropout), nn.ReLU())
+
+    def forward(self, x):
+        return self.layer(x)
+
+
+class PerceptronBNEnd(nn.Module):
+    def __init__(self, c_in, c_out, dropout=0.5):
+        super().__init__()
+        self.layer = nn.Sequential(nn.Linear(in_features=c_in, out_features=c_out),
+                                   nn.Dropout(dropout), nn.ReLU(),
+                                   nn.BatchNorm1d(c_out))
 
     def forward(self, x):
         return self.layer(x)
@@ -317,6 +327,32 @@ class MLP14(Model):
         self.l7 = PerceptronNoBN(4096, 4096, dropout)
 
         self.l8 = PerceptronNoBN(4096, 71, dropout)
+
+    def forward(self, x):
+        x1 = self.l1(x)
+        x3 = self.l3(x1 + self.l2(x1))
+        x5 = self.l5(x3 + self.l4(x3))
+        x7 = self.l7(x5 + self.l6(x5))
+        return self.l8(x7)
+
+
+class MLP15(Model):
+    @property
+    def input_dims(self) -> List:
+        return [40 * (2 * self.K + 1)]
+
+    def __init__(self, K, dropout):
+        super().__init__()
+        self.K = K
+        self.l1 = PerceptronBNEnd(40 * (2 * K + 1), 4096, dropout)
+        self.l2 = PerceptronBNEnd(4096, 4096, dropout)
+        self.l3 = PerceptronBNEnd(4096, 4096, dropout)
+        self.l4 = PerceptronBNEnd(4096, 4096, dropout)
+        self.l5 = PerceptronBNEnd(4096, 4096, dropout)
+        self.l6 = PerceptronBNEnd(4096, 4096, dropout)
+        self.l7 = PerceptronBNEnd(4096, 4096, dropout)
+
+        self.l8 = PerceptronBNEnd(4096, 71, dropout)
 
     def forward(self, x):
         x1 = self.l1(x)
