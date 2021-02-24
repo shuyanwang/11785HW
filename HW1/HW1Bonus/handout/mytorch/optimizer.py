@@ -6,7 +6,7 @@ import numpy as np
 try:
     from hw1 import MLP
 except ModuleNotFoundError:
-    pass
+    MLP = object
 
 """
 In the linear.py file, attributes have been added to the Linear class to make
