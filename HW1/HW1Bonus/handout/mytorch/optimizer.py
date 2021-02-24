@@ -2,7 +2,11 @@
 # be available to AutoLab and are not needed (or allowed)
 
 import numpy as np
-from hw1 import MLP  # TODO for intellisense, comment before submission
+
+try:
+    from hw1 import MLP
+except ModuleNotFoundError:
+    pass
 
 """
 In the linear.py file, attributes have been added to the Linear class to make
