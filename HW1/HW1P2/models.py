@@ -360,3 +360,52 @@ class MLP15(Model):
         x5 = self.l5(x3 + self.l4(x3))
         x7 = self.l7(x5 + self.l6(x5))
         return self.l8(x7)
+
+
+class MLP16(Model):
+    @property
+    def input_dims(self) -> List:
+        return [40 * (2 * self.K + 1)]
+
+    def __init__(self, K, dropout):
+        super().__init__()
+        self.K = K
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 8192, dropout)
+        self.l2 = PerceptronLayer(8192, 8192, dropout)
+        self.l3 = PerceptronLayer(8192, 8192, dropout)
+        self.l4 = PerceptronLayer(8192, 8192, dropout)
+        self.l5 = PerceptronLayer(8192, 8192, dropout)
+        self.l6 = PerceptronLayer(8192, 8192, dropout)
+        self.l7 = PerceptronLayer(8192, 71, dropout)
+
+    def forward(self, x):
+        x1 = self.l1(x)
+        x3 = self.l3(x1 + self.l2(x1))
+        x5 = self.l5(x3 + self.l4(x3))
+        return self.l7(x5 + self.l6(x5))
+
+
+class MLP17(Model):
+    @property
+    def input_dims(self) -> List:
+        return [40 * (2 * self.K + 1)]
+
+    def __init__(self, K, dropout):
+        super().__init__()
+        self.K = K
+        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096, dropout)
+        self.l2 = PerceptronLayer(4096, 4096, dropout)
+        self.l3 = PerceptronLayer(4096, 4096, dropout)
+        self.l4 = PerceptronLayer(4096, 4096, dropout)
+        self.l5 = PerceptronLayer(4096, 4096, dropout)
+        self.l6 = PerceptronLayer(4096, 4096, dropout)
+        self.l7 = PerceptronLayer(4096, 4096, dropout)
+
+        self.l8 = nn.Linear(4096, 71)
+
+    def forward(self, x):
+        x1 = self.l1(x)
+        x3 = self.l3(x1 + self.l2(x1))
+        x5 = self.l5(x3 + self.l4(x3))
+        x7 = self.l7(x5 + self.l6(x5))
+        return self.l8(x7)
