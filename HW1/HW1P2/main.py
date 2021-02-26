@@ -91,7 +91,8 @@ def main():
     params = ParamsHW1(B=8192, K=30, dropout=0.5)
     model = MLP17(params.K, params.dropout)
     learner = LearningHW1(params, model)
-    learner.train()
+    learner.load_model(70)
+    # learner.train()
     learner.test()
 
     # 2048 Still full GPU utilization
