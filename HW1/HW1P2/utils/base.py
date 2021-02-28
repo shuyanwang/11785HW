@@ -111,7 +111,7 @@ class Learning(ABC):
                     loss = self.criterion(prediction, by)
                     total_loss += loss
                     y_prime = torch.argmax(prediction, dim=1)
-                    total_acc += torch.count_nonzero(y_prime == by)
+                    total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
                     self.optimizer.zero_grad()
                     loss.backward()
@@ -147,7 +147,7 @@ class Learning(ABC):
                     loss = self.criterion(prediction, by)
                     total_loss += loss
                     y_prime = torch.argmax(prediction, dim=1)
-                    total_acc += torch.count_nonzero(y_prime == by)
+                    total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
                 loss_item = total_loss.item() / (i + 1)
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
