@@ -59,22 +59,19 @@ class HW2Classification(Learning):
 
         results = torch.zeros(len(self.test_samples), dtype=torch.int)
 
-        i = 0
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
-                for item in tqdm(self.test_loader):
+                for (i, item) in enumerate(tqdm(self.test_loader)):
                     x = item[0].to(self.device)
                     labels = torch.argmax(self.model(x), dim=1)
-                    for b in range(labels.shape[0]):
-                        file_id = int(self.test_samples[i + b][0].split('\\')[-1].split('.')[0])
-                        results[file_id] = labels[b].item()
-                    i += labels.shape[0]
+                    file_id = int(self.test_samples[i][0].split('\\')[-1].split('.')[0])
+                    results[file_id] = labels.item()
 
         with open('results/' + str(self) + '.csv', 'w') as f:
             f.write('id,label\n')
-            for i in range(len(self.test_samples)):
-                f.write(str(i) + '.jpg,' + str(results[i].item()) + '\n')
+            for i, result in enumerate(results):
+                f.write(str(i) + '.jpg,' + str(result.item()) + '\n')
 
 
 def main():
