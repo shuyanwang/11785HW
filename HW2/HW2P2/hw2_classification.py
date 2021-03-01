@@ -49,7 +49,7 @@ class HW2Classification(Learning):
 
         self.test_samples = test_set.imgs
         self.test_loader = torch.utils.data.DataLoader(test_set,
-                                                       batch_size=self.params.B, shuffle=False,
+                                                       batch_size=1, shuffle=False,
                                                        pin_memory=True, num_workers=num_workers)
 
     def test(self):
@@ -57,7 +57,7 @@ class HW2Classification(Learning):
             self._load_test()
         # print('testing...')
 
-        results = torch.zeros(len(self.test_samples), dtype=int)
+        results = torch.zeros(len(self.test_samples), dtype=torch.int)
 
         i = 0
         with torch.cuda.device(self.device):
@@ -67,8 +67,8 @@ class HW2Classification(Learning):
                     x = item[0].to(self.device)
                     labels = torch.argmax(self.model(x), dim=1)
                     for b in range(labels.shape[0]):
-                        results[int(self.test_samples[i + b][0].split('\\')[-1].split('.')[0])] = \
-                            labels[b].item()
+                        file_id = int(self.test_samples[i + b][0].split('\\')[-1].split('.')[0])
+                        results[file_id] = labels[b].item()
                     i += labels.shape[0]
 
         with open('results/' + str(self) + '.csv', 'w') as f:
