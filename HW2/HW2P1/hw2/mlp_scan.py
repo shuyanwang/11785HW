@@ -34,7 +34,7 @@ class CNN_SimpleScanningMLP():
         # w1, w2, w3 contain the weights for the three layers of the MLP
         # Load them appropriately into the CNN
 
-        w1,w2,w3 = weights
+        w1, w2, w3 = weights
         self.conv1.W = None
         self.conv2.W = None
         self.conv3.W = None
