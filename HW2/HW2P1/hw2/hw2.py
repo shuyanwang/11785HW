@@ -11,8 +11,8 @@ from activation import *
 from linear import *
 from conv import *
 
-class CNN(object):
 
+class CNN(object):
     """
     A simple convolutional neural network
 
@@ -27,18 +27,22 @@ class CNN(object):
         """
         input_width           : int    : The width of the input to the first convolutional layer
         num_input_channels    : int    : Number of channels for the input layer
-        num_channels          : [int]  : List containing number of (output) channels for each conv layer
+        num_channels          : [int]  : List containing number of (output) channels for each
+        conv layer
         kernel_sizes          : [int]  : List containing kernel width for each conv layer
         strides               : [int]  : List containing stride size for each conv layer
         num_linear_neurons    : int    : Number of neurons in the linear layer
-        activations           : [obj]  : List of objects corresponding to the activation fn for each conv layer
+        activations           : [obj]  : List of objects corresponding to the activation fn for
+        each conv layer
         conv_weight_init_fn   : fn     : Function to init each conv layers weights
-        bias_init_fn          : fn     : Function to initialize each conv layers AND the linear layers bias to 0
+        bias_init_fn          : fn     : Function to initialize each conv layers AND the linear
+        layers bias to 0
         linear_weight_init_fn : fn     : Function to initialize the linear layers weights
         criterion             : obj    : Object to the criterion (SoftMaxCrossEntropy) to be used
         lr                    : float  : The learning rate for the class
 
-        You can be sure that len(activations) == len(num_channels) == len(kernel_sizes) == len(strides)
+        You can be sure that len(activations) == len(num_channels) == len(kernel_sizes) == len(
+        strides)
         """
 
         # Don't change this -->
@@ -64,7 +68,6 @@ class CNN(object):
         self.convolutional_layers = None
         self.flatten = None
         self.linear_layer = None
-
 
     def forward(self, x):
         """
@@ -101,7 +104,6 @@ class CNN(object):
 
         return grad
 
-
     def zero_grads(self):
         # Do not modify this method
         for i in range(self.nlayers):
@@ -117,11 +119,10 @@ class CNN(object):
             self.convolutional_layers[i].W = (self.convolutional_layers[i].W -
                                               self.lr * self.convolutional_layers[i].dW)
             self.convolutional_layers[i].b = (self.convolutional_layers[i].b -
-                                  self.lr * self.convolutional_layers[i].db)
+                                              self.lr * self.convolutional_layers[i].db)
 
         self.linear_layer.W = (self.linear_layer.W - self.lr * self.linear_layers.dW)
-        self.linear_layers.b = (self.linear_layers.b -  self.lr * self.linear_layers.db)
-
+        self.linear_layers.b = (self.linear_layers.b - self.lr * self.linear_layers.db)
 
     def __call__(self, x):
         # Do not modify this method
