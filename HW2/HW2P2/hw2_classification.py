@@ -46,7 +46,7 @@ class HW2Classification(Learning):
     def _load_test(self):
         self.test_loader = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(
                 os.path.join(self.params.data_dir, 'test_data'), transform=transforms),
-                batch_size=self.params.B, shuffle=False, pin_memory=True, num_workers=num_workers)
+                batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers)
 
     def test(self):
         if self.test_loader is None:
