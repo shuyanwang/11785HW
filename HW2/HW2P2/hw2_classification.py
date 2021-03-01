@@ -44,26 +44,37 @@ class HW2Classification(Learning):
                 batch_size=self.params.B, shuffle=False, pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
-        self.test_loader = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'test_data'), transform=transforms),
-                batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers)
+        test_set = torchvision.datasets.ImageFolder(
+                os.path.join(self.params.data_dir, 'test_data'), transform=transforms)
+
+        self.test_samples = test_set.imgs
+        self.test_loader = torch.utils.data.DataLoader(test_set,
+                                                       batch_size=self.params.B, shuffle=False,
+                                                       pin_memory=True, num_workers=num_workers)
 
     def test(self):
         if self.test_loader is None:
             self._load_test()
         # print('testing...')
+
+        results = torch.zeros(len(self.test_samples), dtype=int)
+
+        i = 0
+        with torch.cuda.device(self.device):
+            with torch.no_grad():
+                self.model.eval()
+                for item in tqdm(self.test_loader):
+                    x = item[0].to(self.device)
+                    labels = torch.argmax(self.model(x), dim=1)
+                    for b in range(labels.shape[0]):
+                        results[int(self.test_samples[i + b][0].split('\\')[-1].split('.')[0])] = \
+                            labels[b].item()
+                    i += labels.shape[0]
+
         with open('results/' + str(self) + '.csv', 'w') as f:
-            f.write('id,label')
-            i = 0
-            with torch.cuda.device(self.device):
-                with torch.no_grad():
-                    self.model.eval()
-                    for item in tqdm(self.test_loader):
-                        x = item.to(self.device)
-                        labels = torch.argmax(self.model(x), dim=1)
-                        for b in range(labels.shape[0]):
-                            f.write('\n' + str(i + b) + '.jpg,' + str(labels[b].item()))
-                        i += labels.shape[0]
+            f.write('id,label\n')
+            for i in range(len(self.test_samples)):
+                f.write(str(i) + '.jpg,' + str(results[i].item()) + '\n')
 
 
 def main():
@@ -73,13 +84,20 @@ def main():
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
     parser.add_argument('--name', default='ResNet34', help='Model Name')
+    parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
+    parser.add_argument('--train', action='store_true')
+    parser.add_argument('--test', action='store_true')
     args = parser.parse_args()
     params = ParamsHW2Classification(B=args.B, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id)
     model = eval(args.name + '()')
     learner = HW2Classification(params, model)
-    learner.train()
-    learner.test()
+    if args.epoch >= 0:
+        learner.load_model(args.epoch)
+    if args.train:
+        learner.train()
+    if args.test:
+        learner.test()
 
 
 if __name__ == '__main__':
