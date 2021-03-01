@@ -7,14 +7,14 @@ from torch.utils.data.dataset import T_co
 from utils.base import Params, Learning
 from tqdm import tqdm
 
-num_workers = 12
+num_workers = 8
 
 
 class ParamsHW1(Params):
     def __init__(self, K=15, B=32768, lr=1e-3, max_epoch=201, is_double=False,
-                 data_dir='c:/DLData/11785_data/HW1', dropout=0.5):
+                 data_dir='c:/DLData/11785_data/HW1', dropout=0.5, device='cuda:0'):
         super(ParamsHW1, self).__init__(B=B, lr=lr, max_epoch=max_epoch,
-                                        data_dir=data_dir, is_double=is_double)
+                                        data_dir=data_dir, is_double=is_double, device=device)
         self.K = K
         self.dropout = dropout
         self.str = 'k=' + str(self.K) + 'b=' + str(self.B) + 'd=' + str(self.dropout) + 'lr=' + str(
