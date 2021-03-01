@@ -74,10 +74,11 @@ def main():
     parser.add_argument('--dropout', default=0.5, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
+    parser.add_argument('--name', default='ResNet34', help='Model Name')
     args = parser.parse_args()
     params = ParamsHW2Classification(B=args.B, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id)
-    model = ResNet()
+    model = eval(args.name + '()')
     learner = HW2Classification(params, model)
     learner.train()
     learner.test()

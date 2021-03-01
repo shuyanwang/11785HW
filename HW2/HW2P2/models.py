@@ -442,10 +442,36 @@ class MLP18(Model):
         return self.l10(x9)
 
 
-class ResNet(Model):
+class ResNet101(Model):
     def __init__(self):
-        super(ResNet, self).__init__()
+        super().__init__()
         self.net = resnet.ResNet(resnet.Bottleneck, [3, 4, 23, 3], num_classes=4000)
+
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class ResNet34(Model):
+    def __init__(self):
+        super().__init__()
+        self.net = resnet.ResNet(resnet.BasicBlock, [3, 4, 6, 3], num_classes=4000)
+
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class ResNet18(Model):
+    def __init__(self):
+        super().__init__()
+        self.net = resnet.ResNet(resnet.BasicBlock, [2, 2, 2, 2], num_classes=4000)
 
     @property
     def input_dims(self) -> List:
