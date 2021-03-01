@@ -37,7 +37,7 @@ class Params(ABC):
 
 
 class Learning(ABC):
-    def __init__(self, params, model: Model, optimizer_handle, criterion_handle):
+    def __init__(self, params, model: Model, optimizer_handle, criterion_handle, draw_graph=False):
 
         self.params = params
         self.device = params.device
@@ -53,7 +53,9 @@ class Learning(ABC):
         if params.is_double:
             self.model.double()
 
-        self.writer.add_graph(model, torch.rand([params.B] + model.input_dims, device=self.device))
+        if draw_graph:
+            self.writer.add_graph(model,
+                                  torch.rand([params.B] + model.input_dims, device=self.device))
 
         self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
         self.criterion = criterion_handle().cuda(self.device)
@@ -126,7 +128,7 @@ class Learning(ABC):
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 5 == 0:
+                if epoch % 1 == 0:
                     self.save_model(epoch, loss_item)
 
     def _validate(self, epoch):
