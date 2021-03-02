@@ -44,6 +44,6 @@ When retrieving data, I called the `torch.flatten` function to convert the 2D fe
 1D vector for the first layer of the MLP.
 
 For the submitted results, I did not balance differences among classes. This is because doing a weighted sampling turns
-out to be memory-inefficient.
+out to be performance-inefficient.
 
 
