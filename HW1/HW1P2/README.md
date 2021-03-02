@@ -43,5 +43,7 @@ Then, I built a look-up table to convert (utterance id, frame id) to a single in
 When retrieving data, I called the `torch.flatten` function to convert the 2D features (Context * Channels) to a
 1D vector for the first layer of the MLP.
 
-For the submission, I did not balance differences among classes, although I tried to do so in the `count_classes.py`
-before the cut-off was released.
+For the submitted results, I did not balance differences among classes. This is because doing a weighted sampling turns
+out to be memory-inefficient.
+
+
