@@ -13,9 +13,8 @@ args = parser.parse_args()
 
 def main():
     params = ParamsHW1(B=8192, K=30, dropout=0.5, device='cuda:' + args.gpu_id)
-    model = MLP18(params.K, params.dropout)
+    model = MLP17(params.K, params.dropout)
     learner = LearningHW1(params, model)
-    # learner.load_model(37)
     learner.train()
     learner.test()
 
