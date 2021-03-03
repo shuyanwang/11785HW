@@ -10,18 +10,23 @@ import argparse
 
 num_workers = 8
 
-transforms = torchvision.transforms.Compose([
-    torchvision.transforms.ToTensor()
-])
-
 
 class ParamsHW2Classification(Params):
     def __init__(self, B=1024, lr=1e-3, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification',
-                 dropout=0.5, device='cuda:0'):
+                 dropout=0.5, device='cuda:0', flip=False):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          data_dir=data_dir, is_double=False, device=device)
+
         self.str = 'class_b=' + str(self.B) + 'lr=' + str(self.lr) + 'd=' + str(self.dropout)
+
+        transforms = []
+        if flip:
+            transforms.append(torchvision.transforms.RandomHorizontalFlip())
+            self.str = self.str + '_f'
+
+        transforms.append(torchvision.transforms.ToTensor())
+        self.transforms = torchvision.transforms.Compose(transforms)
 
     def __str__(self):
         return self.str
@@ -34,7 +39,7 @@ class HW2Classification(Learning):
 
     def _load_train(self):
         train_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'train_data'), transform=transforms)
+                os.path.join(self.params.data_dir, 'train_data'), transform=self.params.transforms)
         self.train_loader = torch.utils.data.DataLoader(train_set,
                                                         batch_size=self.params.B, shuffle=True,
                                                         pin_memory=True, num_workers=num_workers)
@@ -42,14 +47,14 @@ class HW2Classification(Learning):
 
     def _load_valid(self):
         valid_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'val_data'), transform=transforms)
+                os.path.join(self.params.data_dir, 'val_data'), transform=self.params.transforms)
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
         self.test_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'test_data'), transform=transforms)
+                os.path.join(self.params.data_dir, 'test_data'), transform=self.params.transforms)
 
         self.test_loader = torch.utils.data.DataLoader(self.test_set,
                                                        batch_size=1, shuffle=False,
