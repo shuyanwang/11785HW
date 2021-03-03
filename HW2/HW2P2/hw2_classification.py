@@ -47,14 +47,17 @@ class HW2Classification(Learning):
 
     def _load_valid(self):
         valid_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'val_data'), transform=self.params.transforms)
+                os.path.join(self.params.data_dir, 'val_data'),
+                transform=torchvision.transforms.ToTensor())
+
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
         self.test_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'test_data'), transform=self.params.transforms)
+                os.path.join(self.params.data_dir, 'test_data'),
+                transform=torchvision.transforms.ToTensor())
 
         self.test_loader = torch.utils.data.DataLoader(self.test_set,
                                                        batch_size=1, shuffle=False,
@@ -94,9 +97,10 @@ def main():
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
+    parser.add_argument('--flip', action='store_true')
     args = parser.parse_args()
     params = ParamsHW2Classification(B=args.B, dropout=args.dropout, lr=args.lr,
-                                     device='cuda:' + args.gpu_id)
+                                     device='cuda:' + args.gpu_id, flip=args.flip)
     model = eval(args.model + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
