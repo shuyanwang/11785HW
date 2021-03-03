@@ -14,7 +14,7 @@ num_workers = 8
 class ParamsHW2Classification(Params):
     def __init__(self, B=1024, lr=1e-3, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification',
-                 dropout=0.5, device='cuda:0', flip=False, normalize=True):
+                 dropout=0.5, device='cuda:0', flip=False, normalize=False, erase=False):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          data_dir=data_dir, is_double=False, device=device)
 
@@ -22,6 +22,7 @@ class ParamsHW2Classification(Params):
 
         transforms_train = []
         transforms_test = []
+
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
             self.str = self.str + '_f'
@@ -35,6 +36,10 @@ class ParamsHW2Classification(Params):
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
             transforms_train.append(
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
+
+        if erase:
+            transforms_train.append(torchvision.transforms.RandomErasing())
+            self.str = self.str + '_e'
 
         self.transforms_train = torchvision.transforms.Compose(transforms_train)
         self.transforms_test = torchvision.transforms.Compose(transforms_test)
@@ -102,19 +107,20 @@ class HW2Classification(Learning):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--B', help='Batch Size', default=1024, type=int)
-    parser.add_argument('--dropout', default=0.5, type=float)
+    parser.add_argument('--dropout', default=0.0, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='ResNet34', help='Model Name')
+    parser.add_argument('--model', default='ResNet18', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--flip', action='store_true')
     parser.add_argument('--normalize', action='store_true')
+    parser.add_argument('--erase', action='store_true')
     args = parser.parse_args()
     params = ParamsHW2Classification(B=args.B, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id, flip=args.flip,
-                                     normalize=args.normalize)
+                                     normalize=args.normalize, erase=args.erase)
     model = eval(args.model + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
@@ -127,3 +133,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#### Observations: Normalization useless; Flip could be useful;
+#### batch size 8102 bad
+#### ResNet 10 Bad
