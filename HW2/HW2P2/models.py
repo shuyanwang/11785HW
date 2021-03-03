@@ -1,81 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as functional
 from utils.base import Model
 from typing import List
-from torchvision.models import resnet, vgg, squeezenet
-
-
-class MLP1(nn.Module):
-    def __init__(self, K):
-        super(MLP1, self).__init__()
-        self.mlp = nn.Sequential(nn.Linear(40 * (2 * K + 1), 1024),
-                                 nn.BatchNorm1d(1024), nn.ReLU(),
-                                 nn.Linear(1024, 1024), nn.BatchNorm1d(1024), nn.ReLU(),
-                                 nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
-                                 nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
-                                 nn.Linear(256, 71))
-
-    def forward(self, x):
-        return self.mlp(x)
-
-
-class MLP2(nn.Module):
-    def __init__(self, K):
-        super(MLP2, self).__init__()
-        self.mlp = nn.Sequential(nn.Linear(40 * (2 * K + 1), 1024),
-                                 nn.BatchNorm1d(1024), nn.ReLU(),
-                                 nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
-                                 nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(),
-                                 nn.Linear(256, 71))
-
-    def forward(self, x):
-        return self.mlp(x)
-
-
-class MLP3(nn.Module):
-    def __init__(self, K):
-        super(MLP3, self).__init__()
-        self.l1 = nn.Linear(40 * (2 * K + 1), 512)
-        self.l2 = nn.Linear(512, 256)
-        self.l3 = nn.Linear(768, 256)
-        self.l4 = nn.Linear(512, 256)
-        self.l5 = nn.Linear(256, 71)
-
-        self.b1 = nn.BatchNorm1d(512)
-        self.b2 = nn.BatchNorm1d(256)
-        self.b3 = nn.BatchNorm1d(256)
-        self.b4 = nn.BatchNorm1d(256)
-
-    def forward(self, x):
-        x1 = functional.relu(self.b1(self.l1(x)))  # B,512
-        x2 = functional.relu(self.b2(self.l2(x1)))  # B,256
-        x3 = functional.relu(self.b3(self.l3(torch.cat([x1, x2], dim=1))))  # B,256
-        x4 = functional.relu(self.b4(self.l4(torch.cat([x2, x3], dim=1))))  # B,256
-        return self.l5(x4)
-
-
-class MLP4(nn.Module):
-    def __init__(self, K):
-        super(MLP4, self).__init__()
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 512)
-        self.l2 = PerceptronLayer(512, 256)
-        self.l3 = PerceptronLayer(768, 256)
-        self.l4 = PerceptronLayer(512, 256)
-        self.l5 = PerceptronLayer(768, 256)
-        self.l6 = PerceptronLayer(768, 256)
-        self.l7 = PerceptronLayer(768, 256)
-        self.out = nn.Linear(256, 71)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x2 = self.l2(x1)
-        x3 = self.l3(torch.cat([x1, x2], dim=1))
-        x4 = self.l4(torch.cat([x2, x3], dim=1))
-        x5 = self.l5(torch.cat([x2, x3, x4], dim=1))
-        x6 = self.l6(torch.cat([x3, x4, x5], dim=1))
-        x7 = self.l5(torch.cat([x4, x5, x6], dim=1))
-        return self.out(x7)
+from torchvision.models import resnet, vgg, squeezenet, densenet
 
 
 class PerceptronLayer(nn.Module):
@@ -89,362 +16,9 @@ class PerceptronLayer(nn.Module):
         return self.layer(x)
 
 
-class MLP5(nn.Module):
-    def __init__(self, K):
-        super(MLP5, self).__init__()
-        self.mlp = nn.Sequential(PerceptronLayer(40 * (2 * K + 1), 1024),
-                                 PerceptronLayer(1024, 1024),
-                                 # PerceptronLayer(1024, 1024),
-                                 PerceptronLayer(1024, 512),
-                                 PerceptronLayer(512, 256),
-                                 PerceptronLayer(256, 71))
-
-    def forward(self, x):
-        return self.mlp(x)
-
-
-class MLP6(nn.Module):
-    def __init__(self, K):
-        super(MLP6, self).__init__()
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 1024)
-        self.l2 = PerceptronLayer(1024, 1024)
-        self.l3 = PerceptronLayer(1024, 1024)
-        self.l4 = PerceptronLayer(1024, 512)
-        self.l5 = PerceptronLayer(512, 256)
-        self.l6 = PerceptronLayer(256, 71)
-
-    def forward(self, x):
-        l1 = self.l1(x)
-        l2 = self.l2(l1)
-        l3 = self.l3(l1 + l2)
-        l4 = self.l4(l2 + l3)
-        return self.l6(self.l5(l4))
-
-
-class MLP7(nn.Module):
-    def __init__(self, K):
-        super(MLP7, self).__init__()
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 1024)
-        self.l2 = PerceptronLayer(1024, 1024)
-        self.l3 = PerceptronLayer(1024, 1024)
-        self.l4 = PerceptronLayer(1024, 1024)
-        self.l5 = PerceptronLayer(1024, 1024)
-        self.l6 = PerceptronLayer(1024, 512)
-        self.l7 = PerceptronLayer(512, 256)
-        self.l8 = PerceptronLayer(256, 71)
-
-    def forward(self, x):
-        l1 = self.l1(x)
-        l2 = self.l2(l1)
-        l3 = self.l3(l1 + l2)
-        l4 = self.l4(l2 + l3)
-        l5 = self.l5(l3 + l4)
-        l6 = self.l6(l4 + l5)
-        return self.l8(self.l7(l6))
-
-
-class MLPSkipConnections(nn.Module):
-    def __init__(self, in_channels, out_channels, num_layers):
-        super(MLPSkipConnections, self).__init__()
-        self.layers = [PerceptronLayer(in_channels, in_channels) for _ in range(1, num_layers)]
-        self.layers.append(PerceptronLayer(in_channels, out_channels))
-        self.layers = nn.ModuleList(self.layers)
-
-    def forward(self, x):
-        x1 = self.layers[0](x)
-        for i in range(1, len(self.layers)):
-            in_vector = x + x1
-            x = x1
-            x1 = self.layers[i](in_vector)
-        return x1
-
-
-class MLP8(nn.Module):
-    def __init__(self, K):
-        super(MLP8, self).__init__()
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 1024)
-        self.skip = MLPSkipConnections(1024, 512, 9)
-        self.l2 = PerceptronLayer(512, 256)
-        self.l3 = PerceptronLayer(256, 71)
-
-    def forward(self, x):
-        l1 = self.l1(x)
-        skip = self.skip(l1)
-        return self.l3(self.l2(skip))
-
-
-class MLP9(nn.Module):
-    def __init__(self, K):
-        super(MLP9, self).__init__()
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 2048)
-        self.skip = MLPSkipConnections(2048, 1024, 5)
-        self.l2 = PerceptronLayer(1024, 256)
-        self.l3 = PerceptronLayer(256, 71)
-
-    def forward(self, x):
-        l1 = self.l1(x)
-        skip = self.skip(l1)
-        return self.l3(self.l2(skip))
-
-
-# consider using broader networks with a smaller B
-
-#### From MLP10, models should inherit Model (in base.py), not nn.Module
-# This is for visualizing graphs
-# To train/validate/test MLP1-9, change the base class and add the input-dims property
-# Performance should not be affected, as input_dims are only used for creating a dummy input
-
-class MLP10(Model):
-    @property
-    def input_dims(self):
-        return [40 * (2 * self.K + 1)]  # Batch dim not included
-
-    def __init__(self, K):
-        super(MLP10, self).__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096)
-        self.skip = MLPSkipConnections(4096, 2048, 5)
-        self.l2 = PerceptronLayer(2048, 1024)
-        self.l3 = PerceptronLayer(1024, 256)
-        self.l4 = PerceptronLayer(256, 71)
-
-    def forward(self, x):
-        return self.l4(self.l3(self.l2(self.skip(self.l1(x)))))
-
-
-class MLP11(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K):
-        super(MLP11, self).__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096)
-        self.l2 = PerceptronLayer(4096, 4096)
-        self.l3 = PerceptronLayer(4096, 4096)
-        self.l4 = PerceptronLayer(4096, 4096)
-        self.l5 = PerceptronLayer(4096, 4096)
-
-        self.classifier = nn.Sequential(PerceptronLayer(4096, 2048),
-                                        PerceptronLayer(2048, 1024),
-                                        PerceptronLayer(1024, 256),
-                                        PerceptronLayer(256, 71))
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        return self.classifier(x5)
-
-
-class MLP12(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096)
-        self.l2 = PerceptronLayer(4096, 4096)
-        self.l3 = PerceptronLayer(4096, 4096)
-        self.l4 = PerceptronLayer(4096, 4096)
-        self.l5 = PerceptronLayer(4096, 4096)
-        self.l6 = PerceptronLayer(4096, 4096)
-        self.l7 = PerceptronLayer(4096, 4096)
-
-        self.l8 = PerceptronLayer(4096, 71)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        x7 = self.l7(x5 + self.l6(x5))
-        return self.l8(x7)
-
-
-class MLP13(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K, dropout):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096, dropout)
-        self.l2 = PerceptronLayer(4096, 4096, dropout)
-        self.l3 = PerceptronLayer(4096, 4096, dropout)
-        self.l4 = PerceptronLayer(4096, 4096, dropout)
-        self.l5 = PerceptronLayer(4096, 4096, dropout)
-        self.l6 = PerceptronLayer(4096, 4096, dropout)
-        self.l7 = PerceptronLayer(4096, 4096, dropout)
-
-        self.l8 = PerceptronLayer(4096, 71, dropout)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        x7 = self.l7(x5 + self.l6(x5))
-        return self.l8(x7)
-
-
-class PerceptronNoBN(nn.Module):
-    def __init__(self, c_in, c_out, dropout=0.5):
-        super().__init__()
-        self.layer = nn.Sequential(nn.Linear(in_features=c_in, out_features=c_out),
-                                   nn.Dropout(dropout), nn.ReLU())
-
-    def forward(self, x):
-        return self.layer(x)
-
-
-class PerceptronBNEnd(nn.Module):
-    def __init__(self, c_in, c_out, dropout=0.5):
-        super().__init__()
-        self.layer = nn.Sequential(nn.Linear(in_features=c_in, out_features=c_out),
-                                   nn.Dropout(dropout), nn.ReLU(),
-                                   nn.BatchNorm1d(c_out))
-
-    def forward(self, x):
-        return self.layer(x)
-
-
-class MLP14(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K, dropout):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronNoBN(40 * (2 * K + 1), 4096, dropout)
-        self.l2 = PerceptronNoBN(4096, 4096, dropout)
-        self.l3 = PerceptronNoBN(4096, 4096, dropout)
-        self.l4 = PerceptronNoBN(4096, 4096, dropout)
-        self.l5 = PerceptronNoBN(4096, 4096, dropout)
-        self.l6 = PerceptronNoBN(4096, 4096, dropout)
-        self.l7 = PerceptronNoBN(4096, 4096, dropout)
-
-        self.l8 = PerceptronNoBN(4096, 71, dropout)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        x7 = self.l7(x5 + self.l6(x5))
-        return self.l8(x7)
-
-
-class MLP15(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K, dropout):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronBNEnd(40 * (2 * K + 1), 4096, dropout)
-        self.l2 = PerceptronBNEnd(4096, 4096, dropout)
-        self.l3 = PerceptronBNEnd(4096, 4096, dropout)
-        self.l4 = PerceptronBNEnd(4096, 4096, dropout)
-        self.l5 = PerceptronBNEnd(4096, 4096, dropout)
-        self.l6 = PerceptronBNEnd(4096, 4096, dropout)
-        self.l7 = PerceptronBNEnd(4096, 4096, dropout)
-
-        self.l8 = PerceptronBNEnd(4096, 71, dropout)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        x7 = self.l7(x5 + self.l6(x5))
-        return self.l8(x7)
-
-
-class MLP16(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K, dropout):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 8192, dropout)
-        self.l2 = PerceptronLayer(8192, 8192, dropout)
-        self.l3 = PerceptronLayer(8192, 8192, dropout)
-        self.l4 = PerceptronLayer(8192, 8192, dropout)
-        self.l5 = PerceptronLayer(8192, 8192, dropout)
-        self.l6 = PerceptronLayer(8192, 8192, dropout)
-        self.l7 = PerceptronLayer(8192, 71, dropout)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        return self.l7(x5 + self.l6(x5))
-
-
-class MLP17(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K, dropout):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096, dropout)
-        self.l2 = PerceptronLayer(4096, 4096, dropout)
-        self.l3 = PerceptronLayer(4096, 4096, dropout)
-        self.l4 = PerceptronLayer(4096, 4096, dropout)
-        self.l5 = PerceptronLayer(4096, 4096, dropout)
-        self.l6 = PerceptronLayer(4096, 4096, dropout)
-        self.l7 = PerceptronLayer(4096, 4096, dropout)
-
-        self.l8 = nn.Linear(4096, 71)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        x7 = self.l7(x5 + self.l6(x5))
-        return self.l8(x7)
-
-
-class MLP18(Model):
-    @property
-    def input_dims(self) -> List:
-        return [40 * (2 * self.K + 1)]
-
-    def __init__(self, K, dropout):
-        super().__init__()
-        self.K = K
-        self.l1 = PerceptronLayer(40 * (2 * K + 1), 4096, dropout)
-        self.l2 = PerceptronLayer(4096, 4096, dropout)
-        self.l3 = PerceptronLayer(4096, 4096, dropout)
-        self.l4 = PerceptronLayer(4096, 4096, dropout)
-        self.l5 = PerceptronLayer(4096, 4096, dropout)
-        self.l6 = PerceptronLayer(4096, 4096, dropout)
-        self.l7 = PerceptronLayer(4096, 4096, dropout)
-        self.l8 = PerceptronLayer(4096, 4096, dropout)
-        self.l9 = PerceptronLayer(4096, 4096, dropout)
-
-        self.l10 = nn.Linear(4096, 71)
-
-    def forward(self, x):
-        x1 = self.l1(x)
-        x3 = self.l3(x1 + self.l2(x1))
-        x5 = self.l5(x3 + self.l4(x3))
-        x7 = self.l7(x5 + self.l6(x5))
-        x9 = self.l9(x7 + self.l8(x7))
-
-        return self.l10(x9)
-
-
 class ResNet101(Model):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.net = resnet.ResNet(resnet.Bottleneck, [3, 4, 23, 3], num_classes=4000)
 
     @property
@@ -456,8 +30,8 @@ class ResNet101(Model):
 
 
 class ResNet34(Model):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.net = resnet.ResNet(resnet.BasicBlock, [3, 4, 6, 3], num_classes=4000)
 
     @property
@@ -469,8 +43,8 @@ class ResNet34(Model):
 
 
 class ResNet18(Model):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.net = resnet.ResNet(resnet.BasicBlock, [2, 2, 2, 2], num_classes=4000)
 
     @property
@@ -482,8 +56,8 @@ class ResNet18(Model):
 
 
 class VGG11BN(Model):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.net = vgg.VGG(
                 vgg.make_layers([64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
                                 True), num_classes=4000)
@@ -497,13 +71,189 @@ class VGG11BN(Model):
 
 
 class SqueezeNet(Model):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.net = squeezenet.SqueezeNet(version='1_1', num_classes=4000)
 
     @property
     def input_dims(self) -> List:
         return [64, 64]
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class MLP19(Model):
+    @property
+    def input_dims(self) -> List:
+        return [64 * 64 * 3]
+
+    def __init__(self, params):
+        super().__init__(params)
+        self.l1 = PerceptronLayer(self.input_dims[0], 4096, params.dropout)
+        self.l2 = PerceptronLayer(4096, 4096, params.dropout)
+        self.l3 = PerceptronLayer(4096, 4096, params.dropout)
+        self.l4 = PerceptronLayer(4096, 4096, params.dropout)
+        self.l5 = PerceptronLayer(4096, 4096, params.dropout)
+        self.l6 = PerceptronLayer(4096, 4096, params.dropout)
+        self.l7 = PerceptronLayer(4096, 4096, params.dropout)
+
+        self.l8 = nn.Linear(4096, 4000)
+
+    def forward(self, x: torch.Tensor):
+        x1 = self.l1(torch.flatten(x, start_dim=1))
+        x3 = self.l3(x1 + self.l2(x1))
+        x5 = self.l5(x3 + self.l4(x3))
+        x7 = self.l7(x5 + self.l6(x5))
+        return self.l8(x7)
+
+
+class ResNetDropOut(nn.Module):
+
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
+                 groups=1, width_per_group=64, replace_stride_with_dilation=None,
+                 norm_layer=None, dropout=0.5):
+        super().__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        self._norm_layer = norm_layer
+
+        self.inplanes = 64
+        self.dilation = 1
+        if replace_stride_with_dilation is None:
+            # each element in the tuple indicates if we should replace
+            # the 2x2 stride with a dilated convolution instead
+            replace_stride_with_dilation = [False, False, False]
+        if len(replace_stride_with_dilation) != 3:
+            raise ValueError("replace_stride_with_dilation should be None "
+                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+        self.groups = groups
+        self.base_width = width_per_group
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
+                               bias=False)
+        self.bn1 = norm_layer(self.inplanes)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.d1 = nn.Dropout(dropout)
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+                                       dilate=replace_stride_with_dilation[0])
+        self.d2 = nn.Dropout(dropout)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+                                       dilate=replace_stride_with_dilation[1])
+        self.d3 = nn.Dropout(dropout)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+                                       dilate=replace_stride_with_dilation[2])
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an
+        # identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, resnet.Bottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+                elif isinstance(m, resnet.BasicBlock):
+                    nn.init.constant_(m.bn2.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+        norm_layer = self._norm_layer
+        downsample = None
+        previous_dilation = self.dilation
+        if dilate:
+            self.dilation *= stride
+            stride = 1
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                    resnet.conv1x1(self.inplanes, planes * block.expansion, stride),
+                    norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
+                            self.base_width, previous_dilation, norm_layer))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups=self.groups,
+                                base_width=self.base_width, dilation=self.dilation,
+                                norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
+
+    def _forward_impl(self, x):
+        # See note [TorchScript super()]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.d1(x)
+        x = self.layer2(x)
+        x = self.d2(x)
+        x = self.layer3(x)
+        x = self.d3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x
+
+    def forward(self, x):
+        return self._forward_impl(x)
+
+
+class ResNetDropOut101(Model):
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetDropOut(dropout=self.params.dropout, block=resnet.Bottleneck,
+                                 layers=[3, 4, 23, 3], num_classes=4000)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class ResNetDropOut18(Model):
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetDropOut(dropout=self.params.dropout, block=resnet.BasicBlock,
+                                 layers=[2, 2, 2, 2], num_classes=4000)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class DenseNet121(Model):
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def __init__(self, params):
+        super(DenseNet121, self).__init__(params)
+        self.net = densenet.DenseNet(num_classes=4000, drop_rate=params.dropout)
 
     def forward(self, x):
         return self.net(x)

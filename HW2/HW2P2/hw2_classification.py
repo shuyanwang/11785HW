@@ -19,9 +19,8 @@ class ParamsHW2Classification(Params):
     def __init__(self, B=1024, lr=1e-3, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification',
                  dropout=0.5, device='cuda:0'):
-        super().__init__(B=B, lr=lr, max_epoch=max_epoch,
+        super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          data_dir=data_dir, is_double=False, device=device)
-        self.dropout = dropout
         self.str = 'class_b=' + str(self.B) + 'lr=' + str(self.lr) + 'd=' + str(self.dropout)
 
     def __str__(self):
@@ -93,7 +92,7 @@ def main():
     args = parser.parse_args()
     params = ParamsHW2Classification(B=args.B, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id)
-    model = eval(args.name + '()')
+    model = eval(args.name + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
         learner.load_model(args.epoch)

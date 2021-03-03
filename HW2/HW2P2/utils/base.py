@@ -8,20 +8,6 @@ from tqdm import tqdm
 from typing import List
 
 
-class Model(nn.Module, ABC):
-    def __init__(self):
-        super().__init__()
-
-    @property
-    @abstractmethod
-    def input_dims(self) -> List:
-        pass
-
-    @abstractmethod
-    def forward(self, x):
-        pass
-
-
 @dataclass
 class Params(ABC):
     B: int = field(default=1024)
@@ -30,10 +16,26 @@ class Params(ABC):
     max_epoch: int = field(default=101)
     is_double: int = field(default=False)
     device: torch.device = field(default=torch.device("cuda:0"))
+    dropout: float = field(default=0.)
 
     @abstractmethod
     def __str__(self):
         return ''
+
+
+class Model(nn.Module, ABC):
+    def __init__(self, params: Params):
+        super().__init__()
+        self.params = params
+
+    @property
+    @abstractmethod
+    def input_dims(self) -> List:
+        pass
+
+    @abstractmethod
+    def forward(self, x: torch.Tensor):
+        pass
 
 
 class Learning(ABC):
@@ -41,7 +43,7 @@ class Learning(ABC):
 
         self.params = params
         self.device = params.device
-        self.str = str(params) + model.__class__.__name__
+        self.str = model.__class__.__name__ + '_' + str(params)
 
         self.writer = SummaryWriter('runs/' + str(self))
 
