@@ -257,3 +257,16 @@ class DenseNet121(Model):
 
     def forward(self, x):
         return self.net(x)
+
+
+class ResNet10(Model):
+    def __init__(self, params):
+        super(ResNet10, self).__init__(params)
+        self.net = resnet.ResNet(resnet.BasicBlock, [1, 1, 1, 1], 4000)
+
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
