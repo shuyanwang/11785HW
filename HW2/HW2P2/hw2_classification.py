@@ -85,14 +85,14 @@ def main():
     parser.add_argument('--dropout', default=0.5, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--name', default='ResNet34', help='Model Name')
+    parser.add_argument('--model', default='ResNet34', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     args = parser.parse_args()
     params = ParamsHW2Classification(B=args.B, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id)
-    model = eval(args.name + '(params)')
+    model = eval(args.model + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
         learner.load_model(args.epoch)
