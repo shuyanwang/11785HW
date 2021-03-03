@@ -34,30 +34,36 @@ class HW2Classification(Learning):
         print(str(self))
 
     def _load_train(self):
-        self.train_loader = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'train_data'), transform=transforms),
-                batch_size=self.params.B, shuffle=True, pin_memory=True, num_workers=num_workers)
+        train_set = torchvision.datasets.ImageFolder(
+                os.path.join(self.params.data_dir, 'train_data'), transform=transforms)
+        self.train_loader = torch.utils.data.DataLoader(train_set,
+                                                        batch_size=self.params.B, shuffle=True,
+                                                        pin_memory=True, num_workers=num_workers)
+        self.label_to_class = train_set.classes
 
     def _load_valid(self):
-        self.valid_loader = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'val_data'), transform=transforms),
-                batch_size=self.params.B, shuffle=False, pin_memory=True, num_workers=num_workers)
+        valid_set = torchvision.datasets.ImageFolder(
+                os.path.join(self.params.data_dir, 'val_data'), transform=transforms)
+        self.valid_loader = torch.utils.data.DataLoader(valid_set,
+                                                        batch_size=self.params.B, shuffle=False,
+                                                        pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
-        test_set = torchvision.datasets.ImageFolder(
+        self.test_set = torchvision.datasets.ImageFolder(
                 os.path.join(self.params.data_dir, 'test_data'), transform=transforms)
 
-        self.test_samples = test_set.imgs
-        self.test_loader = torch.utils.data.DataLoader(test_set,
+        self.test_loader = torch.utils.data.DataLoader(self.test_set,
                                                        batch_size=1, shuffle=False,
                                                        pin_memory=True, num_workers=num_workers)
 
     def test(self):
         if self.test_loader is None:
             self._load_test()
-        # print('testing...')
 
-        results = torch.zeros(len(self.test_samples), dtype=torch.int)
+        if self.label_to_class is None:
+            self._load_train()  # for class labels
+
+        results = torch.zeros(len(self.test_set.imgs), dtype=torch.int)
 
         with torch.cuda.device(self.device):
             with torch.no_grad():
@@ -65,8 +71,8 @@ class HW2Classification(Learning):
                 for (i, item) in enumerate(tqdm(self.test_loader)):
                     x = item[0].to(self.device)
                     labels = torch.argmax(self.model(x), dim=1)
-                    file_id = int(self.test_samples[i][0].split('\\')[-1].split('.')[0])
-                    results[file_id] = labels.item()
+                    file_id = int(self.test_set.imgs[i][0].split('\\')[-1].split('.')[0])
+                    results[file_id] = int(self.label_to_class[labels.item()])
 
         with open('results/' + str(self) + '.csv', 'w') as f:
             f.write('id,label\n')

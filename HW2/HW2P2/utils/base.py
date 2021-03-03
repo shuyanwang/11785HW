@@ -49,6 +49,8 @@ class Learning(ABC):
         self.valid_loader = None
         self.test_loader = None
 
+        self.label_to_class = None
+
         self.model = model.cuda(self.device)
         if params.is_double:
             self.model.double()
@@ -129,7 +131,7 @@ class Learning(ABC):
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 5 == 0:
+                if epoch % 20 == 0:
                     self.save_model(epoch, loss_item)
 
     def _validate(self, epoch):

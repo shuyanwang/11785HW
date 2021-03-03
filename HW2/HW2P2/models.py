@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 from utils.base import Model
 from typing import List
-from torchvision.models import resnet, vgg
+from torchvision.models import resnet, vgg, squeezenet
 
 
 class MLP1(nn.Module):
@@ -487,6 +487,19 @@ class VGG11BN(Model):
         self.net = vgg.VGG(
                 vgg.make_layers([64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
                                 True), num_classes=4000)
+
+    @property
+    def input_dims(self) -> List:
+        return [64, 64]
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class SqueezeNet(Model):
+    def __init__(self):
+        super().__init__()
+        self.net = squeezenet.SqueezeNet(version='1_1', num_classes=4000)
 
     @property
     def input_dims(self) -> List:
