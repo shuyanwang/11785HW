@@ -20,47 +20,55 @@ sys.path.append('hw2')
 import mc
 
 np.random.seed(2020)
+
+
 ############################################################################################
 ################################   Section 2 - MCQ    ######################################
 ############################################################################################
 
 def test_mcq_1():
     return 'b' == mc.question_1()
+
+
 def test_mcq_2():
     return 'd' == mc.question_2()
+
+
 def test_mcq_3():
     return 'b' == mc.question_3()
+
+
 def test_mcq_4():
     return 'a' == mc.question_4()
+
+
 def test_mcq_5():
     res = 'a' == mc.question_5()
-    print('-'*20)
+    print('-' * 20)
     return res
+
+
 ############################################################################################
 ####################################   Section 3.1    ######################################
 ############################################################################################
 
 def test_cnn_correctness_once(idx):
-
-    scores_dict = [0,0,0,0]
+    scores_dict = [0, 0, 0, 0]
 
     ############################################################################################
     #############################   Initialize hyperparameters    ##############################
     ############################################################################################
     rint = np.random.randint
     norm = np.linalg.norm
-    in_c, out_c = rint(5,15), rint(5,15)
-    kernel, stride =  rint(1,10), rint(1,10)
-    batch, width = rint(1,4), rint(20,300)
-
-
+    in_c, out_c = rint(5, 15), rint(5, 15)
+    kernel, stride = rint(1, 10), rint(1, 10)
+    batch, width = rint(1, 4), rint(20, 300)
 
     def info():
         print('\nTesting model:')
-        print('    in_channel: {}, out_channel: {},'.format(in_c,out_c))
-        print('    kernel size: {}, stride: {},'.format(kernel,stride))
-        print('    batch size: {}, input size: {}.'.format(batch,width))
-
+        print('    in_channel: {}, out_channel: {},'.format(in_c, out_c))
+        print('    kernel size: {}, stride: {},'.format(kernel, stride))
+        print('    batch size: {}, input size: {}.'.format(batch, width))
 
     ##############################################################################################
     ##########    Initialize the CNN layer and copy parameters to a PyTorch CNN layer   ##########
@@ -81,33 +89,28 @@ def test_cnn_correctness_once(idx):
     model.weight = nn.Parameter(torch.tensor(net.W))
     model.bias = nn.Parameter(torch.tensor(net.b))
 
-
     #############################################################################################
     #########################    Get the correct results from PyTorch   #########################
     #############################################################################################
     x = np.random.randn(batch, in_c, width)
-    x1 = Variable(torch.tensor(x),requires_grad=True)
+    x1 = Variable(torch.tensor(x), requires_grad=True)
     y1 = model(x1)
     b, c, w = y1.shape
-    delta = np.random.randn(b,c,w)
+    delta = np.random.randn(b, c, w)
     y1.backward(torch.tensor(delta))
-
 
     #############################################################################################
     ##########################    Get your forward results and compare ##########################
     #############################################################################################
     y = net(x)
     assert y.shape == y1.shape
-    if not(y.shape == y1.shape): print("FAILURE")
-
+    if not (y.shape == y1.shape): print("FAILURE")
 
     forward_res = y - y1.detach().numpy()
     forward_res_norm = abs(forward_res).max()
 
-
-
     if forward_res_norm < 1e-12:
-        scores_dict[0] =  1
+        scores_dict[0] = 1
 
     else:
         info()
@@ -136,7 +139,6 @@ def test_cnn_correctness_once(idx):
     db_res = net.db - model.bias.grad.detach().numpy()
     db_res_norm = abs(db_res).max()
 
-
     if delta_res_norm < 1e-12:
         scores_dict[1] = 1
 
@@ -159,7 +161,7 @@ def test_cnn_correctness_once(idx):
 
 def test_cnn_correctness():
     scores = []
-    worker = min(mtp.cpu_count(),4)
+    worker = min(mtp.cpu_count(), 4)
     p = mtp.Pool(worker)
 
     for __ in range(15):
@@ -178,8 +180,9 @@ def test_cnn_correctness():
     print('Conv1D dW:', 'PASS' if c == 1 else 'FAIL')
     print('Conv1D db:', 'PASS' if d == 1 else 'FAIL')
 
-    print('-'*20)
+    print('-' * 20)
     return True
+
 
 ############################################################################################
 ###############################   Section 2.2 - Conv2D  ######################################
@@ -196,12 +199,12 @@ def conv2d_forward_correctness():
     ############################################################################################
     #############################   Initialize parameters    ###################################
     ############################################################################################
-    in_c = np.random.randint(5,15)
-    out_c = np.random.randint(5,15)
-    kernel = np.random.randint(3,7)
-    stride = np.random.randint(3,5)
-    width = np.random.randint(60,80)
-    batch = np.random.randint(1,4)
+    in_c = np.random.randint(5, 15)
+    out_c = np.random.randint(5, 15)
+    kernel = np.random.randint(3, 7)
+    stride = np.random.randint(3, 5)
+    width = np.random.randint(60, 80)
+    batch = np.random.randint(1, 4)
 
     x = np.random.randn(batch, in_c, width, width)
 
@@ -241,6 +244,7 @@ def conv2d_forward_correctness():
 
     return scores_dict
 
+
 def test_conv2d_forward():
     np.random.seed(11785)
     n = 2
@@ -255,6 +259,7 @@ def test_conv2d_forward():
                 print('Passed Conv2D Forward Test: %d / %d' % (i + 1, n))
     return True
 
+
 def conv2d_backward_correctness():
     '''
     lecture 9: pg 102
@@ -266,12 +271,12 @@ def conv2d_backward_correctness():
     ############################################################################################
     #############################   Initialize parameters    ###################################
     ############################################################################################
-    in_c = np.random.randint(5,15)
-    out_c = np.random.randint(5,15)
-    kernel = np.random.randint(3,7)
-    stride = np.random.randint(3,5)
-    width = np.random.randint(60,80)
-    batch = np.random.randint(1,4)
+    in_c = np.random.randint(5, 15)
+    out_c = np.random.randint(5, 15)
+    kernel = np.random.randint(3, 7)
+    stride = np.random.randint(3, 5)
+    width = np.random.randint(60, 80)
+    batch = np.random.randint(1, 4)
 
     x = np.random.randn(batch, in_c, width, width)
 
@@ -350,6 +355,7 @@ def conv2d_backward_correctness():
 
     return scores_dict
 
+
 def test_conv2d_backward():
     np.random.seed(11785)
     n = 2
@@ -366,7 +372,7 @@ def test_conv2d_backward():
         else:
             if __name__ == '__main__':
                 print('Passed Conv2D Backward Test: %d / %d' % (i + 1, n))
-    print('-'*20)
+    print('-' * 20)
     return True
 
 
@@ -377,66 +383,82 @@ def test_conv2d_backward():
 
 import mlp_scan as cnn_solution
 
+
 def test_simple_scanning_mlp():
-    data = np.loadtxt(os.path.join('autograder', 'hw2_autograder', 'data', 'data.asc')).T.reshape(1, 24, -1)
+    data = np.loadtxt(os.path.join('autograder', 'hw2_autograder', 'data', 'data.asc')).T.reshape(1,
+                                                                                                  24,
+                                                                                                  -1)
     cnn = cnn_solution.CNN_SimpleScanningMLP()
-    weights = np.load(os.path.join('autograder', 'hw2_autograder', 'weights', 'mlp_weights_part_b.npy'), allow_pickle = True)
+    weights = np.load(
+        os.path.join('autograder', 'hw2_autograder', 'weights', 'mlp_weights_part_b.npy'),
+        allow_pickle=True)
     cnn.init_weights(weights)
 
-    expected_result = np.load(os.path.join('autograder', 'hw2_autograder', 'ref_result', 'res_b.npy'), allow_pickle = True)
+    expected_result = np.load(
+        os.path.join('autograder', 'hw2_autograder', 'ref_result', 'res_b.npy'), allow_pickle=True)
     result = cnn(data)
 
     try:
-        assert(type(result)==type(expected_result))
-        assert(result.shape==expected_result.shape)
-        assert(np.allclose(result,expected_result))
+        assert (type(result) == type(expected_result))
+        assert (result.shape == expected_result.shape)
+        assert (np.allclose(result, expected_result))
 
         print("Simple Scanning MLP:" + "PASS")
-        print('-'*20)
+        print('-' * 20)
         return True
     except Exception as e:
         print("Simple Scanning MLP:" + "FAIL")
         traceback.print_exc()
-        print('-'*20)
+        print('-' * 20)
         return False
 
 
 def test_distributed_scanning_mlp():
-    data = np.loadtxt(os.path.join('autograder', 'hw2_autograder', 'data', 'data.asc')).T.reshape(1, 24, -1)
+    data = np.loadtxt(os.path.join('autograder', 'hw2_autograder', 'data', 'data.asc')).T.reshape(1,
+                                                                                                  24,
+                                                                                                  -1)
     cnn = cnn_solution.CNN_DistributedScanningMLP()
-    weights = np.load(os.path.join('autograder', 'hw2_autograder', 'weights', 'mlp_weights_part_c.npy'), allow_pickle = True)
+    weights = np.load(
+        os.path.join('autograder', 'hw2_autograder', 'weights', 'mlp_weights_part_c.npy'),
+        allow_pickle=True)
     cnn.init_weights(weights)
 
-    expected_result = np.load(os.path.join('autograder', 'hw2_autograder', 'ref_result', 'res_c.npy'), allow_pickle = True)
+    expected_result = np.load(
+        os.path.join('autograder', 'hw2_autograder', 'ref_result', 'res_c.npy'), allow_pickle=True)
     result = cnn(data)
 
     try:
-        assert(type(result)==type(expected_result))
-        assert(result.shape==expected_result.shape)
-        assert(np.allclose(result,expected_result))
+        assert (type(result) == type(expected_result))
+        assert (result.shape == expected_result.shape)
+        assert (np.allclose(result, expected_result))
         print("Distributed Scanning MLP:" + "PASS")
-        print('-'*20)
+        print('-' * 20)
         return True
     except Exception as e:
         print("Distributed Scanning MLP:" + "FAIL")
-        print('-'*20)
+        print('-' * 20)
         traceback.print_exc()
         return False
+
 
 ############################################################################################
 #########   Section 3.5 - Build Your Own CNN Model    ######################################
 ############################################################################################
 import hw2
 
+
 # Default Weight Initialization for Conv1D and Linear
 def conv1d_random_normal_weight_init(d0, d1, d2):
     return np.random.normal(0, 1.0, (d0, d1, d2))
 
+
 def linear_random_normal_weight_init(d0, d1):
     return np.random.normal(0, 1.0, (d0, d1))
 
+
 def zeros_bias_init(d):
     return np.zeros(d)
+
 
 def get_cnn_model():
     input_width = 128
@@ -453,9 +475,10 @@ def get_cnn_model():
     strides = [1, 2, 2]
     activations = [Tanh(), ReLU(), Sigmoid()]
 
-    model = hw2.CNN(input_width, input_channels, out_channels, kernel_sizes, strides, num_linear_neurons,
-                 activations, conv_weight_init_fn, bias_init_fn, linear_weight_init_fn,
-                 criterion, lr)
+    model = hw2.CNN(input_width, input_channels, out_channels, kernel_sizes, strides,
+                    num_linear_neurons,
+                    activations, conv_weight_init_fn, bias_init_fn, linear_weight_init_fn,
+                    criterion, lr)
 
     return model
 
@@ -466,6 +489,7 @@ class Flatten_(nn.Module):
 
     def forward(self, input):
         return input.view(input.size(0), -1)
+
 
 class CNN_model(nn.Module):
     def __init__(self):
@@ -479,7 +503,6 @@ class CNN_model(nn.Module):
 
         self.flatten = Flatten_()
         self.fc = nn.Linear(14 * 30, self.out_size)
-
 
     def forward(self, x):
         x = self.conv1(x)
@@ -496,25 +519,30 @@ class CNN_model(nn.Module):
 
 
 def cnn_model_correctness(idx):
-
     scores_dict = [0, 0, 0, 0]
 
     TOLERANCE = 1e-8
 
     '''
-    Write assertions to check the weight dimensions for each layer and see whether they're initialized correctly
+    Write assertions to check the weight dimensions for each layer and see whether they're 
+    initialized correctly
     '''
 
     submit_model = get_cnn_model()
     ref_model = CNN_model()
     for i in range(3):
-        getattr(ref_model, 'conv{:d}'.format(i + 1)).weight = nn.Parameter(torch.tensor(submit_model.convolutional_layers[i].W))
-        getattr(ref_model, 'conv{:d}'.format(i + 1)).bias = nn.Parameter(torch.tensor(submit_model.convolutional_layers[i].b))
+        getattr(ref_model, 'conv{:d}'.format(i + 1)).weight = nn.Parameter(
+            torch.tensor(submit_model.convolutional_layers[i].W))
+        getattr(ref_model, 'conv{:d}'.format(i + 1)).bias = nn.Parameter(
+            torch.tensor(submit_model.convolutional_layers[i].b))
     ref_model.fc.weight = nn.Parameter(torch.tensor(submit_model.linear_layer.W.T))
     ref_model.fc.bias = nn.Parameter(torch.tensor(submit_model.linear_layer.b))
 
-    data = np.loadtxt(os.path.join('autograder', 'hw2_autograder', 'data', 'data.asc')).T.reshape(1, 24, -1)
-    labels = np.load(os.path.join('autograder', 'hw2_autograder', 'data', 'labels.npy'), allow_pickle = True)
+    data = np.loadtxt(os.path.join('autograder', 'hw2_autograder', 'data', 'data.asc')).T.reshape(1,
+                                                                                                  24,
+                                                                                                  -1)
+    labels = np.load(os.path.join('autograder', 'hw2_autograder', 'data', 'labels.npy'),
+                     allow_pickle=True)
 
     #############################################################################################
     #########################    Get the correct results from Refrence   ########################
@@ -525,7 +553,7 @@ def cnn_model_correctness(idx):
     #        124 -> Int((124 - 6) / 2) + 1 = 60
     #        60  -> Int((60 - 2) / 2) + 1  = 30
 
-    x_torch = Variable(torch.from_numpy(data), requires_grad = True)
+    x_torch = Variable(torch.from_numpy(data), requires_grad=True)
     labels_torch = torch.tensor([0.0]).long()
 
     y1 = ref_model(x_torch)
@@ -539,13 +567,12 @@ def cnn_model_correctness(idx):
     dW_ref = ref_model.conv1.weight.grad.detach().numpy()
     db_ref = ref_model.conv1.bias.grad.detach().numpy()
 
-
     #############################################################################################
     ##########################    Get your forward results and compare ##########################
     #############################################################################################
     y2 = submit_model(data)
     assert y1.shape == y2.shape
-    if not(y1.shape == y2.shape): print("FAILURE")
+    if not (y1.shape == y2.shape): print("FAILURE")
 
     forward_res = y2 - y1.detach().numpy()
     forward_res_norm = abs(forward_res).max()
@@ -579,7 +606,6 @@ def cnn_model_correctness(idx):
     db_res = db - db_ref
     db_res_norm = abs(db_res).max()
 
-
     if delta_res_norm < TOLERANCE:
         scores_dict[1] = 1
 
@@ -599,6 +625,7 @@ def cnn_model_correctness(idx):
         assert False
     return scores_dict
 
+
 def test_conv1d_model():
     scores = []
     worker = min(mtp.cpu_count(), 4)
@@ -617,7 +644,7 @@ def test_conv1d_model():
     print('Conv1D Model dX:', 'PASS' if b == 1 else 'FAIL')
     print('Conv1D Model dW:', 'PASS' if c == 1 else 'FAIL')
     print('Conv1D Model db:', 'PASS' if d == 1 else 'FAIL')
-    print('-'*20)
+    print('-' * 20)
     return True
 
 
@@ -692,8 +719,6 @@ tests = [
         'value': 15,
     }
 
-
-
 ]
 # tests.reverse()
 
@@ -751,8 +776,6 @@ tests = [
 # print('Conv1D Model dW:', 'PASS' if c == 1 else 'FAIL')
 # print('Conv1D Model db:', 'PASS' if d == 1 else 'FAIL')
 
-if __name__=='__main__':
+if __name__ == '__main__':
     # np.random.seed(2021)
     run_tests(tests)
-
-

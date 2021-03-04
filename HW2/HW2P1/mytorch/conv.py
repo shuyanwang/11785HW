@@ -1,5 +1,6 @@
 # Do not import any additional 3rd party external libraries as they will not
 # be available to AutoLab and are not needed (or allowed)
+from typing import Optional
 
 import numpy as np
 
@@ -26,6 +27,8 @@ class Conv1D:
         self.dW = np.zeros(self.W.shape)
         self.db = np.zeros(self.b.shape)
 
+        self.x: Optional[np.ndarray] = None
+
     def __call__(self, x):
         return self.forward(x)
 
@@ -45,9 +48,8 @@ class Conv1D:
 
         for o in range(output_size):
             x_filter = x[:, :, o * self.stride:o * self.stride + kernel_size]  # (batch,cin,k)
-            # out[:, :, o] = np.tensordot(x_filter,
-            #                             self.W, 1)  # (batch,out_channel)
-            out[:, :, o] = np.einsum('bik,oik->bo', x_filter, self.W)
+            out[:, :, o] = np.tensordot(x_filter, self.W, ([1, 2], [1, 2]))  # (batch,out_channel)
+            # out[:, :, o] = np.einsum('bik,oik->bo', x_filter, self.W) # also works
 
         out += np.reshape(self.b, (self.b.shape[0], 1))
 
@@ -60,7 +62,47 @@ class Conv1D:
         Return:
             dx (np.array): (batch_size, in_channel, input_size)
         """
-        return self.x
+        batch_size, input_size = self.x.shape[0], self.x.shape[2]
+        kernel_size = self.W.shape[2]
+        output_size = delta.shape[2]
+
+        # self.dW[:] = 0
+        # self.db[:] = 0
+
+        w_flipped = np.flip(self.W, axis=2)  # (cout,cin,k)
+        dx = np.zeros_like(self.x)
+
+        pad_size_for_x = input_size + (kernel_size - 1)
+        # (output_size - 1) * self.stride + 1 + 2 * (kernel_size - 1) WRONG
+        pad_size_for_w = (output_size - 1) * self.stride + 1
+
+        delta_padded_for_x = np.zeros((batch_size, self.out_channel, pad_size_for_x))
+        delta_padded_for_w = np.zeros((batch_size, self.out_channel, pad_size_for_w))
+
+        for o in range(output_size):
+            delta_padded_for_x[:, :, o * self.stride + (kernel_size - 1)] = delta[:, :, o]
+            delta_padded_for_w[:, :, o * self.stride] = delta[:, :, o]
+
+        for i in range(input_size):
+            delta_filter_for_x = delta_padded_for_x[:, :, i:i + kernel_size]  # (batch,cout,k)
+            # w_flipped: (cout,cin,kernel_size)
+
+            assert delta_filter_for_x.shape[2] == w_flipped.shape[2]
+
+            dx[:, :, i] = np.tensordot(delta_filter_for_x, w_flipped, ([1, 2], [0, 2]))
+            # (batch,cin)
+
+        for k in range(kernel_size):
+            # delta_pad_w: (batch,cout,pad_w)
+            x_filter_for_w = self.x[:, :, k:k + pad_size_for_w]  # (batch,cin,pad_w)
+            self.dW[:, :, k] = np.tensordot(delta_padded_for_w, x_filter_for_w, ([0, 2], [0, 2]))
+            # (out_channel,in_channel,kernel_size)
+
+        d = np.sum(delta, axis=2)
+        d = np.sum(d, axis=0)
+        self.db = d
+
+        return dx
 
 
 class Conv2D:
