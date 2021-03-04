@@ -230,3 +230,13 @@ class ResNet10(Model):
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+
+
+class ResNet152(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = resnet.ResNet(resnet.Bottleneck, [3, 8, 36, 3],
+                                 num_classes=self.params.output_channels)
+
+    def forward(self, x):
+        return self.net(x)

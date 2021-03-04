@@ -33,9 +33,9 @@ def test_mcq_3():
 def test_mcq_4():
     return 'a' == mc.question_4()
 def test_mcq_5():
-    res = 'a' == mc.question_5()        
+    res = 'a' == mc.question_5()
     print('-'*20)
-    return res 
+    return res
 ############################################################################################
 ####################################   Section 3.1    ######################################
 ############################################################################################
@@ -67,7 +67,7 @@ def test_cnn_correctness_once(idx):
     ##############################################################################################
     def random_normal_weight_init_fn(out_channel, in_channel, kernel_size):
         return np.random.normal(0, 1.0, (out_channel, in_channel, kernel_size))
-    
+
     if idx == 0:
         print("---Conv1D Forward (Tests)---")
     try:
@@ -121,7 +121,7 @@ def test_cnn_correctness_once(idx):
 
     if idx == 0:
         print("---Conv1D Backward (Tests)---")
-    assert dx.shape == x.shape    
+    assert dx.shape == x.shape
     assert net.dW.shape == model.weight.grad.detach().numpy().shape
     assert net.db.shape == model.bias.grad.detach().numpy().shape
     #############################################################################################
@@ -139,7 +139,7 @@ def test_cnn_correctness_once(idx):
 
     if delta_res_norm < 1e-12:
         scores_dict[1] = 1
-    
+
     if dW_res_norm < 1e-12:
         scores_dict[2] = 1
 
@@ -161,13 +161,13 @@ def test_cnn_correctness():
     scores = []
     worker = min(mtp.cpu_count(),4)
     p = mtp.Pool(worker)
-    
+
     for __ in range(15):
-        scores_dict = test_cnn_correctness_once(__) 
+        scores_dict = test_cnn_correctness_once(__)
         scores.append(scores_dict)
         if min(scores_dict) != 1:
             return False
-    
+
     # scores = np.array(scores).min(0)
     a, b, c, d = np.array(scores).min(0)
     print('Section 4.1.1 - Forward | 15 points')
@@ -192,7 +192,7 @@ def conv2d_forward_correctness():
     CNN: scanning with a MLP with stride
     '''
     scores_dict = [0]
-    
+
     ############################################################################################
     #############################   Initialize parameters    ###################################
     ############################################################################################
@@ -210,9 +210,9 @@ def conv2d_forward_correctness():
     #############################################################################################
     def random_normal_weight_init_fn(out_channel, in_channel, kernel_width, kernel_height):
         return np.random.normal(0, 1.0, (out_channel, in_channel, kernel_width, kernel_height))
-    
+
     test_model = Conv2D(in_c, out_c, kernel, stride, random_normal_weight_init_fn, np.zeros)
-    
+
     torch_model = nn.Conv2d(in_c, out_c, kernel, stride=stride)
     torch_model.weight = nn.Parameter(torch.tensor(test_model.W))
     torch_model.bias = nn.Parameter(torch.tensor(test_model.b))
@@ -223,7 +223,7 @@ def conv2d_forward_correctness():
     x1 = Variable(torch.tensor(x), requires_grad=True)
     y1 = torch_model(x1)
     torch_y = y1.detach().numpy()
-    
+
     #############################################################################################
     ###################    Get fwd results from TestModel and compare  ##########################
     #############################################################################################
@@ -238,7 +238,7 @@ def conv2d_forward_correctness():
     if not assertions(test_y, torch_y, 'shape', 'y'): return scores_dict
     if not assertions(test_y, torch_y, 'closeness', 'y'): return scores_dict
     scores_dict[0] = 1
-    
+
     return scores_dict
 
 def test_conv2d_forward():
@@ -262,7 +262,7 @@ def conv2d_backward_correctness():
     CNN: scanning with a MLP with stride
     '''
     scores_dict = [0, 0, 0, 0]
-    
+
     ############################################################################################
     #############################   Initialize parameters    ###################################
     ############################################################################################
@@ -280,9 +280,9 @@ def conv2d_backward_correctness():
     #############################################################################################
     def random_normal_weight_init_fn(out_channel, in_channel, kernel_width, kernel_height):
         return np.random.normal(0, 1.0, (out_channel, in_channel, kernel_width, kernel_height))
-    
+
     test_model = Conv2D(in_c, out_c, kernel, stride, random_normal_weight_init_fn, np.zeros)
-    
+
     torch_model = nn.Conv2d(in_c, out_c, kernel, stride=stride)
     torch_model.weight = nn.Parameter(torch.tensor(test_model.W))
     torch_model.bias = nn.Parameter(torch.tensor(test_model.b))
@@ -293,7 +293,7 @@ def conv2d_backward_correctness():
     x1 = Variable(torch.tensor(x), requires_grad=True)
     y1 = torch_model(x1)
     torch_y = y1.detach().numpy()
-    
+
     b, c, w, h = torch_y.shape
     delta = np.random.randn(b, c, w, h)
     y1.backward(torch.tensor(delta))
@@ -316,7 +316,7 @@ def conv2d_backward_correctness():
     if not assertions(test_y, torch_y, 'shape', 'y'): return scores_dict
     if not assertions(test_y, torch_y, 'closeness', 'y'): return scores_dict
     scores_dict[0] = 1
-    
+
     #############################################################################################
     ###################    Get bwd results from TestModel and compare  ##########################
     #############################################################################################
@@ -328,26 +328,26 @@ def conv2d_backward_correctness():
     test_dx = dy2
     test_dW = test_model.dW
     test_db = test_model.db
-    
+
     if not assertions(test_dx, torch_dx, 'type', 'dx'): return scores_dict
     if not assertions(test_dx, torch_dx, 'shape', 'dx'): return scores_dict
     if not assertions(test_dx, torch_dx, 'closeness', 'dx'): return scores_dict
     scores_dict[1] = 1
-    
+
     if not assertions(test_dW, torch_dW, 'type', 'dW'): return scores_dict
     if not assertions(test_dW, torch_dW, 'shape', 'dW'): return scores_dict
     if not assertions(test_dW, torch_dW, 'closeness', 'dW'): return scores_dict
     scores_dict[2] = 1
-    
+
     if not assertions(test_db, torch_db, 'type', 'db'): return scores_dict
     if not assertions(test_db, torch_db, 'shape', 'db'): return scores_dict
     if not assertions(test_db, torch_db, 'closeness', 'db'): return scores_dict
     scores_dict[3] = 1
-    
+
     #############################################################################################
     ##############################    Compare Results   #########################################
     #############################################################################################
-    
+
     return scores_dict
 
 def test_conv2d_backward():
@@ -456,7 +456,7 @@ def get_cnn_model():
     model = hw2.CNN(input_width, input_channels, out_channels, kernel_sizes, strides, num_linear_neurons,
                  activations, conv_weight_init_fn, bias_init_fn, linear_weight_init_fn,
                  criterion, lr)
-    
+
     return model
 
 
@@ -480,7 +480,7 @@ class CNN_model(nn.Module):
         self.flatten = Flatten_()
         self.fc = nn.Linear(14 * 30, self.out_size)
 
-    
+
     def forward(self, x):
         x = self.conv1(x)
         x = torch.tanh(x)
@@ -500,7 +500,7 @@ def cnn_model_correctness(idx):
     scores_dict = [0, 0, 0, 0]
 
     TOLERANCE = 1e-8
-    
+
     '''
     Write assertions to check the weight dimensions for each layer and see whether they're initialized correctly
     '''
@@ -539,7 +539,7 @@ def cnn_model_correctness(idx):
     dW_ref = ref_model.conv1.weight.grad.detach().numpy()
     db_ref = ref_model.conv1.bias.grad.detach().numpy()
 
-    
+
     #############################################################################################
     ##########################    Get your forward results and compare ##########################
     #############################################################################################
@@ -556,7 +556,7 @@ def cnn_model_correctness(idx):
         print("Fail to return correct forward values")
         assert False
         return scores_dict
-    
+
     #############################################################################################
     ##################   Get your backward results and check the tensor shape ###################
     #############################################################################################
@@ -582,13 +582,13 @@ def cnn_model_correctness(idx):
 
     if delta_res_norm < TOLERANCE:
         scores_dict[1] = 1
-    
+
     if dW_res_norm < TOLERANCE:
         scores_dict[2] = 1
-    
+
     if db_res_norm < TOLERANCE:
         scores_dict[3] = 1
-    
+
     if min(scores_dict) != 1:
         if scores_dict[1] == 0:
             print('Fail to return correct backward values dx')
@@ -621,7 +621,7 @@ def test_conv1d_model():
     return True
 
 
-# TODO: add tests here with names and calling the functions. 
+# TODO: add tests here with names and calling the functions.
 # 'autolab' is the name on autolab I think, but you probably won't need to worry about it.
 # The test functions should return True or False.
 tests = [
@@ -693,7 +693,7 @@ tests = [
     }
 
 
-    
+
 ]
 # tests.reverse()
 
@@ -738,7 +738,7 @@ tests = [
 # # Section 5.2
 # print('Section 5.2 - CNN as a Distributed Scanning MLP | 10 points')
 # c = test_distributed_scanning_mlp()
-# print("Distributed MLP:", "PASS" if c else "FAIL")    
+# print("Distributed MLP:", "PASS" if c else "FAIL")
 
 # print('--------------------------------------------------')
 

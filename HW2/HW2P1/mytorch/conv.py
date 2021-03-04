@@ -4,7 +4,7 @@
 import numpy as np
 
 
-class Conv1D():
+class Conv1D:
     def __init__(self, in_channel, out_channel, kernel_size, stride,
                  weight_init_fn=None, bias_init_fn=None):
         # Do not modify this method
@@ -17,7 +17,7 @@ class Conv1D():
             self.W = np.random.normal(0, 1.0, (out_channel, in_channel, kernel_size))
         else:
             self.W = weight_init_fn(out_channel, in_channel, kernel_size)
-        
+
         if bias_init_fn is None:
             self.b = np.zeros(out_channel)
         else:
@@ -29,16 +29,29 @@ class Conv1D():
     def __call__(self, x):
         return self.forward(x)
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray):
         """
         Argument:
             x (np.array): (batch_size, in_channel, input_size)
         Return:
             out (np.array): (batch_size, out_channel, output_size)
         """
-        raise NotImplemented
+        # W: (out_channel,in_channel,kernel_size)
+        self.x = x
+        batch_size, input_size = x.shape[0], x.shape[2]
+        kernel_size = self.W.shape[2]
+        output_size = (input_size - kernel_size) // self.stride + 1
+        out = np.zeros((batch_size, self.out_channel, output_size))
 
+        for o in range(output_size):
+            x_filter = x[:, :, o * self.stride:o * self.stride + kernel_size]  # (batch,cin,k)
+            # out[:, :, o] = np.tensordot(x_filter,
+            #                             self.W, 1)  # (batch,out_channel)
+            out[:, :, o] = np.einsum('bik,oik->bo', x_filter, self.W)
 
+        out += np.reshape(self.b, (self.b.shape[0], 1))
+
+        return out
 
     def backward(self, delta):
         """
@@ -47,10 +60,10 @@ class Conv1D():
         Return:
             dx (np.array): (batch_size, in_channel, input_size)
         """
-        raise NotImplemented
+        return self.x
 
 
-class Conv2D():
+class Conv2D:
     def __init__(self, in_channel, out_channel,
                  kernel_size, stride,
                  weight_init_fn=None, bias_init_fn=None):
@@ -64,7 +77,7 @@ class Conv2D():
             self.W = np.random.normal(0, 1.0, (out_channel, in_channel, kernel_size, kernel_size))
         else:
             self.W = weight_init_fn(out_channel, in_channel, kernel_size, kernel_size)
-        
+
         if bias_init_fn is None:
             self.b = np.zeros(out_channel)
         else:
@@ -84,7 +97,7 @@ class Conv2D():
             out (np.array): (batch_size, out_channel, output_width, output_height)
         """
         raise NotImplementedError
-        
+
     def backward(self, delta):
         """
         Argument:
@@ -93,9 +106,14 @@ class Conv2D():
             dx (np.array): (batch_size, in_channel, input_width, input_height)
         """
         raise NotImplementedError
-        
 
-class Flatten():
+
+class Flatten:
+    def __init__(self):
+        self.b = None
+        self.c = None
+        self.w = None
+
     def __call__(self, x):
         return self.forward(x)
 
