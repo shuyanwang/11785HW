@@ -12,21 +12,24 @@ num_workers = 8
 
 
 class ParamsHW2Classification(Params):
-    def __init__(self, B=1024, lr=1e-3, max_epoch=201,
-                 data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification',
-                 dropout=0.5, device='cuda:0', flip=False, normalize=False, erase=False, resize=0):
-        super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
-                         data_dir=data_dir, is_double=False, device=device)
+    def __init__(self, B, lr, dropout, device, flip, normalize,
+                 erase, resize, max_epoch=201,
+                 data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'):
+
+        self.size = 64 if resize <= 0 else resize
+
+        super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout, output_channels=4000,
+                         data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
 
         self.str = 'class_b=' + str(self.B) + 'lr=' + str(self.lr) + 'd=' + str(self.dropout)
 
         transforms_train = []
         transforms_test = []
 
-        if resize > 0:
-            self.str = self.str + '_r' + str(resize)
-            transforms_train.append(torchvision.transforms.Resize(resize))
-            transforms_test.append(torchvision.transforms.Resize(resize))
+        if self.size != 64:
+            self.str = self.str + '_r' + str(self.size)
+            transforms_train.append(torchvision.transforms.Resize(self.size))
+            transforms_test.append(torchvision.transforms.Resize(self.size))
 
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())

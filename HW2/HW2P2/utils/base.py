@@ -17,6 +17,8 @@ class Params(ABC):
     is_double: int = field(default=False)
     device: torch.device = field(default=torch.device("cuda:0"))
     dropout: float = field(default=0.)
+    input_dims: tuple = field(default=(3, 64, 64))
+    output_channels: int = field(default=4000)
 
     @abstractmethod
     def __str__(self):
@@ -24,14 +26,10 @@ class Params(ABC):
 
 
 class Model(nn.Module, ABC):
-    def __init__(self, params: Params):
+    @abstractmethod
+    def __init__(self, params):
         super().__init__()
         self.params = params
-
-    @property
-    @abstractmethod
-    def input_dims(self) -> List:
-        pass
 
     @abstractmethod
     def forward(self, x: torch.Tensor):
@@ -58,8 +56,8 @@ class Learning(ABC):
             self.model.double()
 
         if draw_graph:
-            self.writer.add_graph(model,
-                                  torch.rand([params.B] + model.input_dims, device=self.device))
+            self.writer.add_graph(model, torch.rand([params.B] + list(params.input_dims),
+                                                    device=self.device))
 
         self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
         self.criterion = criterion_handle().cuda(self.device)
@@ -133,7 +131,7 @@ class Learning(ABC):
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 20 == 0:
+                if epoch % 5 == 0:
                     self.save_model(epoch, loss_item)
 
     def _validate(self, epoch):

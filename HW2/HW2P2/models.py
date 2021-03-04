@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 from utils.base import Model
-from typing import List
 from torchvision.models import resnet, vgg, squeezenet, densenet
+from hw2_classification import ParamsHW2Classification
 
 
 class PerceptronLayer(nn.Module):
@@ -19,11 +19,8 @@ class PerceptronLayer(nn.Module):
 class ResNet101(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = resnet.ResNet(resnet.Bottleneck, [3, 4, 23, 3], num_classes=4000)
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
+        self.net = resnet.ResNet(resnet.Bottleneck, [3, 4, 23, 3],
+                                 num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
@@ -32,11 +29,8 @@ class ResNet101(Model):
 class ResNet34(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = resnet.ResNet(resnet.BasicBlock, [3, 4, 6, 3], num_classes=4000)
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
+        self.net = resnet.ResNet(resnet.BasicBlock, [3, 4, 6, 3],
+                                 num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
@@ -45,11 +39,8 @@ class ResNet34(Model):
 class ResNet18(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = resnet.ResNet(resnet.BasicBlock, [2, 2, 2, 2], num_classes=4000)
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
+        self.net = resnet.ResNet(resnet.BasicBlock, [2, 2, 2, 2],
+                                 num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
@@ -60,11 +51,7 @@ class VGG11BN(Model):
         super().__init__(params)
         self.net = vgg.VGG(
                 vgg.make_layers([64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-                                True), num_classes=4000)
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
+                                True), num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
@@ -73,24 +60,16 @@ class VGG11BN(Model):
 class SqueezeNet(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = squeezenet.SqueezeNet(version='1_1', num_classes=4000)
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
+        self.net = squeezenet.SqueezeNet(version='1_1', num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
 
 
 class MLP19(Model):
-    @property
-    def input_dims(self) -> List:
-        return [64 * 64 * 3]
-
     def __init__(self, params):
         super().__init__(params)
-        self.l1 = PerceptronLayer(self.input_dims[0], 4096, params.dropout)
+        self.l1 = PerceptronLayer(self.params.input_dims[0], 4096, params.dropout)
         self.l2 = PerceptronLayer(4096, 4096, params.dropout)
         self.l3 = PerceptronLayer(4096, 4096, params.dropout)
         self.l4 = PerceptronLayer(4096, 4096, params.dropout)
@@ -98,7 +77,7 @@ class MLP19(Model):
         self.l6 = PerceptronLayer(4096, 4096, params.dropout)
         self.l7 = PerceptronLayer(4096, 4096, params.dropout)
 
-        self.l8 = nn.Linear(4096, 4000)
+        self.l8 = nn.Linear(4096, self.params.output_channels)
 
     def forward(self, x: torch.Tensor):
         x1 = self.l1(torch.flatten(x, start_dim=1))
@@ -109,10 +88,6 @@ class MLP19(Model):
 
 
 class ResNetDropOut(nn.Module):
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
@@ -219,54 +194,39 @@ class ResNetDropOut(nn.Module):
 
 
 class ResNetDropOut101(Model):
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
-
     def __init__(self, params):
         super().__init__(params)
         self.net = ResNetDropOut(dropout=self.params.dropout, block=resnet.Bottleneck,
-                                 layers=[3, 4, 23, 3], num_classes=4000)
+                                 layers=[3, 4, 23, 3], num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
 
 
 class ResNetDropOut18(Model):
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
-
     def __init__(self, params):
         super().__init__(params)
         self.net = ResNetDropOut(dropout=self.params.dropout, block=resnet.BasicBlock,
-                                 layers=[2, 2, 2, 2], num_classes=4000)
+                                 layers=[2, 2, 2, 2], num_classes=self.params.output_channels)
 
     def forward(self, x):
         return self.net(x)
 
 
 class DenseNet121(Model):
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
-
     def __init__(self, params):
         super(DenseNet121, self).__init__(params)
-        self.net = densenet.DenseNet(num_classes=4000, drop_rate=params.dropout)
+        self.net = densenet.DenseNet(num_classes=self.params.output_channels,
+                                     drop_rate=self.params.dropout)
 
     def forward(self, x):
         return self.net(x)
 
 
 class ResNet10(Model):
-    def __init__(self, params):
+    def __init__(self, params: ParamsHW2Classification):
         super(ResNet10, self).__init__(params)
-        self.net = resnet.ResNet(resnet.BasicBlock, [1, 1, 1, 1], 4000)
-
-    @property
-    def input_dims(self) -> List:
-        return [64, 64]
+        self.net = resnet.ResNet(resnet.BasicBlock, [1, 1, 1, 1], self.params.output_channels)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
