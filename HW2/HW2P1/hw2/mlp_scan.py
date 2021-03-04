@@ -35,7 +35,7 @@ class CNN_SimpleScanningMLP:
         # Load them appropriately into the CNN
 
         w1, w2, w3 = weights
-        self.conv1.W = w1.reshape(self.conv1.W.transpose().shape).transpose()
+        self.conv1.W = w1.reshape(self.conv1.W.transpose().shape).transpose()  # Multiple choice 6
         self.conv2.W[:, :, 0] = np.transpose(w2)
         self.conv3.W[:, :, 0] = np.transpose(w3)
 
@@ -69,7 +69,7 @@ class CNN_SimpleScanningMLP:
         return delta
 
 
-class CNN_DistributedScanningMLP():
+class CNN_DistributedScanningMLP:
     def __init__(self):
         ## Your code goes here -->
         # self.conv1 = ???
@@ -77,10 +77,10 @@ class CNN_DistributedScanningMLP():
         # self.conv3 = ???
         # ...
         # <---------------------
-        self.conv1 = None
-        self.conv2 = None
-        self.conv3 = None
-        self.layers = []
+        self.conv1 = Conv1D(in_channel=24, out_channel=2, kernel_size=2, stride=2)
+        self.conv2 = Conv1D(in_channel=2, out_channel=8, kernel_size=2, stride=2)
+        self.conv3 = Conv1D(in_channel=8, out_channel=4, kernel_size=2, stride=1)
+        self.layers = [self.conv1, ReLU(), self.conv2, ReLU(), self.conv3, Flatten()]
 
     def __call__(self, x):
         # Do not modify this method
@@ -92,9 +92,10 @@ class CNN_DistributedScanningMLP():
         # Load them appropriately into the CNN
 
         w1, w2, w3 = weights
-        self.conv1.W = None
-        self.conv2.W = None
-        self.conv3.W = None
+        # weights : out, in, k
+        self.conv1.W = w1[0:48, 0:2].reshape(self.conv1.W.transpose().shape).transpose()
+        self.conv2.W = w2[0:4, 0:8].reshape(self.conv2.W.transpose().shape).transpose()
+        self.conv3.W = w3.reshape(self.conv3.W.transpose().shape).transpose()
 
     def forward(self, x):
         """
