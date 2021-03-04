@@ -235,7 +235,7 @@ class Flatten:
             out (np.array): (batch_size, in_channel * in width)
         """
         self.b, self.c, self.w = x.shape
-        raise NotImplemented
+        return np.reshape(x, (self.b, -1))
 
     def backward(self, delta):
         """
@@ -244,4 +244,4 @@ class Flatten:
         Return:
             dx (np.array): (batch size, in channel, in width)
         """
-        raise NotImplemented
+        return np.reshape(delta, (self.b, self.c, self.w))

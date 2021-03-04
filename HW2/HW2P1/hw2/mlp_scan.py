@@ -12,7 +12,7 @@ from linear import *
 from conv import *
 
 
-class CNN_SimpleScanningMLP():
+class CNN_SimpleScanningMLP:
     def __init__(self):
         ## Your code goes here -->
         # self.conv1 = ???
@@ -20,10 +20,10 @@ class CNN_SimpleScanningMLP():
         # self.conv3 = ???
         # ...
         # <---------------------
-        self.conv1 = None
-        self.conv2 = None
-        self.conv3 = None
-        self.layers = []
+        self.conv1 = Conv1D(in_channel=24, out_channel=8, kernel_size=8, stride=4)
+        self.conv2 = Conv1D(in_channel=8, out_channel=16, kernel_size=1, stride=1)
+        self.conv3 = Conv1D(in_channel=16, out_channel=4, kernel_size=1, stride=1)
+        self.layers = [self.conv1, ReLU(), self.conv2, ReLU(), self.conv3, Flatten()]
 
     def __call__(self, x):
         # Do not modify this method
@@ -35,9 +35,9 @@ class CNN_SimpleScanningMLP():
         # Load them appropriately into the CNN
 
         w1, w2, w3 = weights
-        self.conv1.W = None
-        self.conv2.W = None
-        self.conv3.W = None
+        self.conv1.W = w1.reshape(self.conv1.W.transpose().shape).transpose()
+        self.conv2.W[:, :, 0] = np.transpose(w2)
+        self.conv3.W[:, :, 0] = np.transpose(w3)
 
     def forward(self, x):
         """
