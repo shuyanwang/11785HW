@@ -69,7 +69,8 @@ class Conv1D:
         # self.dW[:] = 0
         # self.db[:] = 0
 
-        w_flipped = np.flip(self.W, axis=2)  # (cout,cin,k)
+        w_flipped = self.W[:, :, ::-1]
+        # w_flipped = np.flip(self.W, axis=2)  # (cout,cin,k)
         dx = np.zeros_like(self.x)
 
         pad_size_for_x = input_size + (kernel_size - 1)
@@ -170,7 +171,8 @@ class Conv2D:
         kernel_size = self.W.shape[2]
         out_w, out_h = delta.shape[2], delta.shape[3]
 
-        w_flipped = np.flip(self.W, axis=(2, 3))  # (cout,cin,k,k)
+        w_flipped = self.W[:, :, ::-1, ::-1]
+        # w_flipped = np.flip(self.W, axis=(2, 3))  # (cout,cin,k,k)
         dx = np.zeros_like(self.x)
 
         pad_width_for_x = in_w + (kernel_size - 1)
