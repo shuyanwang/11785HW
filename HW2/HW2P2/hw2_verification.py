@@ -121,7 +121,7 @@ class HW2ValidPairSet(torch.utils.data.Dataset):
                 if validation:
                     self.items.append((os.path.join(self.set_path, pair[0]),
                                        os.path.join(self.set_path, pair[1]),
-                                       1 if int(pair[2]) > 0 else -1, pair[0], pair[1]))
+                                       1 if int(pair[2]) > 0 else 0, pair[0], pair[1]))
                 else:
                     self.items.append((os.path.join(self.set_path, pair[0]),
                                        os.path.join(self.set_path, pair[1]),
@@ -165,8 +165,15 @@ class HW2VerificationPair(Learning):
         with torch.cuda.device(self.device):
             self.model.train()
             for epoch in range(self.init_epoch + 1, self.params.max_epoch):
+                print('Epoch:', epoch)
                 total_loss = torch.zeros(1, device=self.device)
                 total_acc = torch.zeros(1, device=self.device)
+
+                TP = torch.zeros(1, device=self.device)
+                FP = torch.zeros(1, device=self.device)
+                TN = torch.zeros(1, device=self.device)
+                FN = torch.zeros(1, device=self.device)
+
                 for i, batch in enumerate(tqdm(self.train_loader)):
                     bx1 = batch[0].to(self.device)
                     bx2 = batch[1].to(self.device)
@@ -180,20 +187,35 @@ class HW2VerificationPair(Learning):
                     y_prime = self.predict(y1, y2)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
+                    TP += torch.count_nonzero(torch.logical_and(y_prime, by))
+                    TN += torch.count_nonzero(torch.logical_and(
+                            torch.logical_not(y_prime), torch.logical_not(by)))
+
+                    FP += torch.count_nonzero(torch.logical_and(
+                            y_prime, torch.logical_not(by)))
+                    FN += torch.count_nonzero(torch.logical_and(
+                            torch.logical_not(y_prime), by))
+
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
+
                 loss_item = total_loss.item() / (i + 1)
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
                 self.writer.add_scalar('Accuracy/Train', accuracy_item, epoch)
-                print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item,
-                      'Accuracy: ', "%.5f" % accuracy_item)
+                self.writer.add_scalar('Precision/Train', (TP / (TP + FP)).item(), epoch)
+                self.writer.add_scalar('Recall/Train', (TP / (TP + FN).item()), epoch)
+                self.writer.add_scalar('TPR/Train', (TP / (TP + FN)).item(), epoch)
+                self.writer.add_scalar('FPR/Train', (FP / (TN + FP)).item(), epoch)
+
+                # print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item,
+                #       'Accuracy: ', "%.5f" % accuracy_item)
 
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 2 == 0:
+                if epoch % 1 == 0:
                     self.save_model(epoch, loss_item)
 
     def _validate(self, epoch):
@@ -206,6 +228,12 @@ class HW2VerificationPair(Learning):
                 self.model.eval()
                 total_loss = torch.zeros(1, device=self.device)
                 total_acc = torch.zeros(1, device=self.device)
+
+                TP = torch.zeros(1, device=self.device)
+                FP = torch.zeros(1, device=self.device)
+                TN = torch.zeros(1, device=self.device)
+                FN = torch.zeros(1, device=self.device)
+
                 for i, batch in enumerate(tqdm(self.valid_loader)):
                     bx1 = batch[0].to(self.device)
                     bx2 = batch[1].to(self.device)
@@ -219,12 +247,25 @@ class HW2VerificationPair(Learning):
                     y_prime = self.predict(y1, y2)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
+                    TP += torch.count_nonzero(torch.logical_and(y_prime, by))
+                    TN += torch.count_nonzero(torch.logical_and(
+                            torch.logical_not(y_prime), torch.logical_not(by)))
+
+                    FP += torch.count_nonzero(torch.logical_and(
+                            y_prime, torch.logical_not(by)))
+                    FN += torch.count_nonzero(torch.logical_and(
+                            torch.logical_not(y_prime), by))
+
                 loss_item = total_loss.item() / (i + 1)
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
-                print('epoch: ', epoch, 'Validation Loss: ', "%.5f" % loss_item,
-                      'Accuracy: ', "%.5f" % accuracy_item)
+                self.writer.add_scalar('Precision/Validation', (TP / (TP + FP)).item(), epoch)
+                self.writer.add_scalar('Recall/Validation', (TP / (TP + FN).item()), epoch)
+                self.writer.add_scalar('TPR/Validation', (TP / (TP + FN)).item(), epoch)
+                self.writer.add_scalar('FPR/Validation', (FP / (TN + FP)).item(), epoch)
+                # print('epoch: ', epoch, 'Validation Loss: ', "%.5f" % loss_item,
+                #       'Accuracy: ', "%.5f" % accuracy_item)
 
     def test(self):
         if self.test_loader is None:
