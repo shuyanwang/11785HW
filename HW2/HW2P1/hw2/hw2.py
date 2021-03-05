@@ -1,5 +1,6 @@
 # DO NOT import any additional 3rd party external libraries as they will not
 # be available to AutoLab and are not needed (or allowed)​
+from typing import List
 
 import numpy as np
 import os
@@ -22,8 +23,8 @@ class CNN(object):
     """
 
     def __init__(self, input_width, num_input_channels, num_channels, kernel_sizes, strides,
-                 num_linear_neurons, activations, conv_weight_init_fn, bias_init_fn,
-                 linear_weight_init_fn, criterion, lr):
+                 num_linear_neurons, activations: List[Activation], conv_weight_init_fn,
+                 bias_init_fn, linear_weight_init_fn, criterion, lr):
         """
         input_width           : int    : The width of the input to the first convolutional layer
         num_input_channels    : int    : Number of channels for the input layer
@@ -82,6 +83,8 @@ class CNN(object):
                                    linear_weight_init_fn,
                                    bias_init_fn)
 
+        self.loss = None
+
     def forward(self, x):
         """
         Argument:
@@ -118,6 +121,13 @@ class CNN(object):
         ## Your code goes here -->
         # Iterate through each layer in reverse order
         # <---------------------
+
+        grad = self.linear_layer.backward(grad)
+        grad = self.flatten.backward(grad)
+
+        for i in range(len(self.activations) - 1, -1, -1):
+            grad *= self.activations[i].derivative()
+            grad = self.convolutional_layers[i].backward(grad)
 
         return grad
 
