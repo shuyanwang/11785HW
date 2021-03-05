@@ -11,10 +11,9 @@ from models import *
 from losses import *
 
 import argparse
+import numpy as np
 
 num_workers = 8
-
-import numpy as np
 
 
 class ParamsHW2Verification(Params):
@@ -182,7 +181,7 @@ class HW2VerificationPair(Learning):
                     y1 = self.model(bx1)
                     y2 = self.model(bx2)
 
-                    loss = self.criterion(bx1, bx2, by)
+                    loss = self.criterion(y1, y2, by)
                     total_loss += loss
                     y_prime = self.predict(y1, y2)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
@@ -221,7 +220,7 @@ class HW2VerificationPair(Learning):
                     y1 = self.model(bx1)
                     y2 = self.model(bx2)
 
-                    loss = self.criterion(bx1, bx2, by)
+                    loss = self.criterion(y1, y2, by)
                     total_loss += loss
                     y_prime = self.predict(y1, y2)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))

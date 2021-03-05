@@ -183,7 +183,7 @@ class ResNetEmbedding(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        x = torch.flatten(x)
+        x = torch.flatten(x, 1)
 
         return x
 
