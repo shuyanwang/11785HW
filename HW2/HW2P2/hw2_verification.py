@@ -147,7 +147,7 @@ class HW2VerificationPair(Learning):
         valid_set = HW2ValidPairSet(validation=True, transform=self.params.transforms_test)
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
-                                                        batch_size=1, shuffle=False,
+                                                        batch_size=self.params.B, shuffle=False,
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
@@ -193,7 +193,7 @@ class HW2VerificationPair(Learning):
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 5 == 0:
+                if epoch % 2 == 0:
                     self.save_model(epoch, loss_item)
 
     def _validate(self, epoch):
@@ -206,7 +206,7 @@ class HW2VerificationPair(Learning):
                 self.model.eval()
                 total_loss = torch.zeros(1, device=self.device)
                 total_acc = torch.zeros(1, device=self.device)
-                for i, batch in enumerate(self.valid_loader):
+                for i, batch in enumerate(tqdm(self.valid_loader)):
                     bx1 = batch[0].to(self.device)
                     bx2 = batch[1].to(self.device)
                     by = batch[2].to(self.device)
