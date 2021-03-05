@@ -4,7 +4,7 @@ from utils.base import PairLoss
 
 
 # from torch.nn import CosineEmbeddingLoss, HingeEmbeddingLoss, MarginRankingLoss
-# These losses are for 1/(-1) labels
+# These nn losses are for 1/(-1) labels
 
 
 class ContrastiveLoss(PairLoss):
@@ -34,3 +34,32 @@ class ContrastiveLoss(PairLoss):
         :return: (N)
         """
         return torch.where(torch.le(torch.pairwise_distance(y1, y2), threshold), 1, 0)
+
+
+class CosineLoss(PairLoss):
+    def __init__(self, m=1.0):
+        super().__init__()
+        self.m = m
+
+    def forward(self, x1, x2, y):
+        """
+        Hinge embedding loss for 0-1, 2 class
+        :param x1:
+        :param x2:
+        :param y: 0 - 1
+        :return:
+        """
+        similarity = torch.cosine_similarity(x1, x2)
+        return torch.mean(
+                torch.clamp(similarity - self.m, min=0.0) * (1 - y) + (1 - similarity) * y)
+
+    @staticmethod
+    def predict(y1, y2, threshold):
+        """
+        Prediction
+        :param y1: (N,*)
+        :param y2:
+        :param threshold: float
+        :return: (N)
+        """
+        return torch.where(torch.ge(torch.cosine_similarity(y1, y2), threshold), 1, 0)
