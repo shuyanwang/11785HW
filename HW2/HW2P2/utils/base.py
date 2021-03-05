@@ -8,6 +8,20 @@ from tqdm import tqdm
 from typing import List
 
 
+class PairLoss(nn.Module, ABC):
+    @abstractmethod
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def forward(self, y1: torch.Tensor, y2: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def predict(self, y1, y2, *args):
+        pass
+
+
 @dataclass
 class Params(ABC):
     B: int = field(default=1024)

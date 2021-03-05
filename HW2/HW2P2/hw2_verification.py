@@ -129,19 +129,13 @@ class HW2ValidPairSet(torch.utils.data.Dataset):
 
 
 class HW2VerificationPair(Learning):
-    def __init__(self, params: ParamsHW2Verification, model: Model, loss):
+    def __init__(self, params: ParamsHW2Verification, model: Model, loss: PairLoss):
         super().__init__(params, model, torch.optim.Adam, loss,
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
         print(str(self))
 
     def predict(self, y1, y2):
-        """
-
-        :param y1: (N,*)
-        :param y2:
-        :return: (N)
-        """
-        return torch.where(torch.le(torch.pairwise_distance(y1, y2), self.params.threshold), 1, 0)
+        return self.criterion.predict(y1, y2, threshold=self.params.threshold)
 
     def _load_train(self):
         train_set = HW2TrainingPairSet(self.params)
