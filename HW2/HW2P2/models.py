@@ -87,7 +87,7 @@ class MLP19(Model):
         return self.l8(x7)
 
 
-class ResNetDropOut(nn.Module):
+class ResNetEmbedding(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
@@ -124,7 +124,6 @@ class ResNetDropOut(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -184,33 +183,12 @@ class ResNetDropOut(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
+        x = torch.flatten(x)
 
         return x
 
     def forward(self, x):
         return self._forward_impl(x)
-
-
-class ResNetDropOut101(Model):
-    def __init__(self, params):
-        super().__init__(params)
-        self.net = ResNetDropOut(dropout=self.params.dropout, block=resnet.Bottleneck,
-                                 layers=[3, 4, 23, 3], num_classes=self.params.output_channels)
-
-    def forward(self, x):
-        return self.net(x)
-
-
-class ResNetDropOut18(Model):
-    def __init__(self, params):
-        super().__init__(params)
-        self.net = ResNetDropOut(dropout=self.params.dropout, block=resnet.BasicBlock,
-                                 layers=[2, 2, 2, 2], num_classes=self.params.output_channels)
-
-    def forward(self, x):
-        return self.net(x)
 
 
 class DenseNet121(Model):
@@ -239,4 +217,24 @@ class ResNet152(Model):
                                  num_classes=self.params.output_channels)
 
     def forward(self, x):
+        return self.net(x)
+
+
+class WideResNet101(Model):
+    def __init__(self, params):
+        super(WideResNet101, self).__init__(params)
+        self.net = resnet.ResNet(width_per_group=64 * 2, num_classes=4000, block=resnet.Bottleneck,
+                                 layers=[3, 4, 23, 3])
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
+
+
+class ResNet101E(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetEmbedding(num_classes=4000,
+                                   block=resnet.Bottleneck, layers=[3, 4, 23, 3])
+
+    def forward(self, x: torch.Tensor):
         return self.net(x)

@@ -118,7 +118,7 @@ def main():
     parser.add_argument('--dropout', default=0.0, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='ResNet18', help='Model Name')
+    parser.add_argument('--model', default='ResNet101', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
@@ -146,6 +146,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-#### Observations: Normalization useless; Flip could be useful; Erasing could be useful.
-#### batch size 8102 bad
-#### ResNet 10 Bad
+#### Observations: Normalization useless; Flip and Erasing used together IS useful.
