@@ -130,8 +130,8 @@ class HW2ValidPairSet(torch.utils.data.Dataset):
 
 class HW2VerificationPair(Learning):
     def __init__(self, params: ParamsHW2Verification, model: Model, loss):
-        super().__init__(params, model, torch.optim.Adam, loss)
-        self.str = model.__class__.__name__ + '_' + loss.__class__.__name__ + '_' + str(params)
+        super().__init__(params, model, torch.optim.Adam, loss,
+                         string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
         print(str(self))
 
     def predict(self, y1, y2):

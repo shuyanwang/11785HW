@@ -1,7 +1,9 @@
 import torch
 from torch import nn
 
-from torch.nn import CosineEmbeddingLoss, HingeEmbeddingLoss, MarginRankingLoss
+
+# from torch.nn import CosineEmbeddingLoss, HingeEmbeddingLoss, MarginRankingLoss
+# These losses are for 1/(-1) labels
 
 
 class ContrastiveLoss(nn.Module):

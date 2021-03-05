@@ -37,11 +37,12 @@ class Model(nn.Module, ABC):
 
 
 class Learning(ABC):
-    def __init__(self, params, model: Model, optimizer_handle, criterion_handle, draw_graph=False):
+    def __init__(self, params, model: Model, optimizer_handle, criterion_handle,
+                 draw_graph=False, string=None):
 
         self.params = params
         self.device = params.device
-        self.str = model.__class__.__name__ + '_' + str(params)
+        self.str = model.__class__.__name__ + '_' + str(params) if string is None else string
 
         self.writer = SummaryWriter('runs/' + str(self))
 
