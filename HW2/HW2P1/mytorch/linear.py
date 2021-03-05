@@ -27,7 +27,7 @@ class Linear:
         self.momentum_W = np.zeros_like(self.W)
         self.momentum_b = np.zeros_like(self.b)
 
-        self.X: Optional[np.ndarray] = None
+        self.X = None
 
         self.mean_dW = np.zeros_like(self.dW)
         self.mean_db = np.zeros_like(self.db)
@@ -48,7 +48,7 @@ class Linear:
         self.X = x
         return x @ self.W + self.b
 
-    def backward(self, delta: np.ndarray):
+    def backward(self, delta):
         """
         Argument:
             delta (np.array): (batch size, out feature)

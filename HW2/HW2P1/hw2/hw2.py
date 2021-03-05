@@ -23,7 +23,7 @@ class CNN(object):
     """
 
     def __init__(self, input_width, num_input_channels, num_channels, kernel_sizes, strides,
-                 num_linear_neurons, activations: List[Activation], conv_weight_init_fn,
+                 num_linear_neurons, activations, conv_weight_init_fn,
                  bias_init_fn, linear_weight_init_fn, criterion, lr):
         """
         input_width           : int    : The width of the input to the first convolutional layer

@@ -27,7 +27,7 @@ class Conv1D:
         self.dW = np.zeros(self.W.shape)
         self.db = np.zeros(self.b.shape)
 
-        self.x: Optional[np.ndarray] = None
+        self.x = None
 
     def __call__(self, x):
         return self.forward(x)
@@ -127,7 +127,7 @@ class Conv2D:
 
         self.dW = np.zeros(self.W.shape)
         self.db = np.zeros(self.b.shape)
-        self.x: Optional[np.ndarray] = None
+        self.x = None
 
     def __call__(self, x):
         return self.forward(x)
