@@ -652,66 +652,66 @@ def test_conv1d_model():
 # 'autolab' is the name on autolab I think, but you probably won't need to worry about it.
 # The test functions should return True or False.
 tests = [
-    {
-        'name': '3.1 - MCQ 1 | 1 point',
-        'autolab': 'MCQ 1',
-        'handler': test_mcq_1,
-        'value': 1,
-    },
-    {
-        'name': '3.2 - MCQ 2 | 1 point',
-        'autolab': 'MCQ 2',
-        'handler': test_mcq_2,
-        'value': 1,
-    },
-    {
-        'name': '3.3 - MCQ 3 | 1 point',
-        'autolab': 'MCQ 3',
-        'handler': test_mcq_3,
-        'value': 1,
-    },
-    {
-        'name': '3.4 - MCQ 4 | 1 point',
-        'autolab': 'MCQ 4',
-        'handler': test_mcq_4,
-        'value': 1,
-    },
-    {
-        'name': '3.5 - MCQ 5 | 1 point',
-        'autolab': 'MCQ 5',
-        'handler': test_mcq_5,
-        'value': 1,
-    },
-    {
-        'name': '4.1 - Conv1D | 40 points',
-        'autolab': 'Conv1D',
-        'handler': test_cnn_correctness,
-        'value': 40,
-    },
-    {
-        'name': '4.2.1 - Conv2D (Forward) | 10 points',
-        'autolab': 'Conv2D-forward',
-        'handler': test_conv2d_forward,
-        'value': 10,
-    },
-    {
-        'name': '4.2.2 - Conv2D (Backward) | 10 points',
-        'autolab': 'Conv2D-backward',
-        'handler': test_conv2d_backward,
-        'value': 10,
-    },
-    {
-        'name': '5.1 - CNN as Simple Scanning MLP | 10 points',
-        'autolab': 'CNN as Simple Scanning MLP',
-        'handler': test_simple_scanning_mlp,
-        'value': 10,
-    },
-    {
-        'name': '5.2 - CNN as Distributed Scanning MLP | 10 points',
-        'autolab': 'CNN as Distributed Scanning MLP',
-        'handler': test_distributed_scanning_mlp,
-        'value': 10,
-    },
+    # {
+    #     'name': '3.1 - MCQ 1 | 1 point',
+    #     'autolab': 'MCQ 1',
+    #     'handler': test_mcq_1,
+    #     'value': 1,
+    # },
+    # {
+    #     'name': '3.2 - MCQ 2 | 1 point',
+    #     'autolab': 'MCQ 2',
+    #     'handler': test_mcq_2,
+    #     'value': 1,
+    # },
+    # {
+    #     'name': '3.3 - MCQ 3 | 1 point',
+    #     'autolab': 'MCQ 3',
+    #     'handler': test_mcq_3,
+    #     'value': 1,
+    # },
+    # {
+    #     'name': '3.4 - MCQ 4 | 1 point',
+    #     'autolab': 'MCQ 4',
+    #     'handler': test_mcq_4,
+    #     'value': 1,
+    # },
+    # {
+    #     'name': '3.5 - MCQ 5 | 1 point',
+    #     'autolab': 'MCQ 5',
+    #     'handler': test_mcq_5,
+    #     'value': 1,
+    # },
+    # {
+    #     'name': '4.1 - Conv1D | 40 points',
+    #     'autolab': 'Conv1D',
+    #     'handler': test_cnn_correctness,
+    #     'value': 40,
+    # },
+    # {
+    #     'name': '4.2.1 - Conv2D (Forward) | 10 points',
+    #     'autolab': 'Conv2D-forward',
+    #     'handler': test_conv2d_forward,
+    #     'value': 10,
+    # },
+    # {
+    #     'name': '4.2.2 - Conv2D (Backward) | 10 points',
+    #     'autolab': 'Conv2D-backward',
+    #     'handler': test_conv2d_backward,
+    #     'value': 10,
+    # },
+    # {
+    #     'name': '5.1 - CNN as Simple Scanning MLP | 10 points',
+    #     'autolab': 'CNN as Simple Scanning MLP',
+    #     'handler': test_simple_scanning_mlp,
+    #     'value': 10,
+    # },
+    # {
+    #     'name': '5.2 - CNN as Distributed Scanning MLP | 10 points',
+    #     'autolab': 'CNN as Distributed Scanning MLP',
+    #     'handler': test_distributed_scanning_mlp,
+    #     'value': 10,
+    # },
     {
         'name': '6 - Build a CNN Model | 15 points',
         'autolab': 'Build a CNN Model',

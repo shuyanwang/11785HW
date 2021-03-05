@@ -80,8 +80,8 @@ class Tanh(Activation):
         super(Tanh, self).__init__()
 
     def forward(self, x):
-        exp = np.exp(x)
-        self.state = (exp - 1 / exp) / (exp + 1 / exp)
+        self.state = np.tanh(x)
+
         return self.state
 
     def derivative(self):

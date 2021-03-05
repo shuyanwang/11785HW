@@ -54,7 +54,7 @@ class CNN(object):
 
         self.lr = lr
         # <---------------------
-
+        self.output = None
         # Don't change the name of the following class attributes,
         # the autograder will check against these attributes. But you will need to change
         # the values in order to initialize them correctly
@@ -65,9 +65,22 @@ class CNN(object):
         # self.linear_layer         (Linear)      = Linear(???)
         # <---------------------
 
-        self.convolutional_layers = None
-        self.flatten = None
-        self.linear_layer = None
+        self.convolutional_layers = [
+            Conv1D(num_input_channels, num_channels[0], kernel_sizes[0], strides[0],
+                   conv_weight_init_fn, bias_init_fn)]
+
+        for i in range(1, len(num_channels)):
+            self.convolutional_layers.append(
+                    Conv1D(num_channels[i - 1], num_channels[i], kernel_sizes[i], strides[i],
+                           conv_weight_init_fn, bias_init_fn))
+
+        for i in range(len(num_channels)):
+            input_width = (input_width - kernel_sizes[i]) // strides[i] + 1
+
+        self.flatten = Flatten()
+        self.linear_layer = Linear(num_channels[-1] * input_width, num_linear_neurons,
+                                   linear_weight_init_fn,
+                                   bias_init_fn)
 
     def forward(self, x):
         """
@@ -82,7 +95,11 @@ class CNN(object):
         # <---------------------
 
         # Save output (necessary for error and loss)
-        self.output = x
+
+        for i in range(len(self.activations)):
+            x = self.activations[i](self.convolutional_layers[i](x))
+
+        self.output = self.linear_layer(self.flatten(x))
 
         return self.output
 
@@ -121,8 +138,8 @@ class CNN(object):
             self.convolutional_layers[i].b = (self.convolutional_layers[i].b -
                                               self.lr * self.convolutional_layers[i].db)
 
-        self.linear_layer.W = (self.linear_layer.W - self.lr * self.linear_layers.dW)
-        self.linear_layers.b = (self.linear_layers.b - self.lr * self.linear_layers.db)
+        self.linear_layer.W = (self.linear_layer.W - self.lr * self.linear_layer.dW)
+        self.linear_layer.b = (self.linear_layer.b - self.lr * self.linear_layer.db)
 
     def __call__(self, x):
         # Do not modify this method
