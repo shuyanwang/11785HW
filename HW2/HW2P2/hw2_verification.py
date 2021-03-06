@@ -215,7 +215,7 @@ class HW2VerificationPair(Learning):
                 self.model.train()
 
                 if epoch % 5 == 0:
-                    self.save_model(epoch, loss_item)
+                    self.save_model(epoch)
 
     def _validate(self, epoch):
         if self.valid_loader is None:
@@ -295,6 +295,7 @@ def main():
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
     parser.add_argument('--model', default='ResNet101', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
+    parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--flip', action='store_true')
@@ -316,7 +317,10 @@ def main():
     learner = HW2VerificationPair(params, model, eval(args.loss))
 
     if args.epoch >= 0:
-        learner.load_model(args.epoch)
+        if args.load == '':
+            learner.load_model(args.epoch)
+        else:
+            learner.load_model(args.epoch, args.load)
     if args.train:
         learner.train()
     if args.test:
