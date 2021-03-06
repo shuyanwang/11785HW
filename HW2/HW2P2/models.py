@@ -238,3 +238,13 @@ class ResNet101E(Model):
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+
+
+class ResNet18E(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetEmbedding(num_classes=4000,
+                                   block=resnet.BasicBlock, layers=[2, 2, 2, 2])
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
