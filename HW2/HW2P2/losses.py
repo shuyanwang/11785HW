@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+# from torch import nn
 from utils.base import PairLoss
 
 
@@ -37,6 +37,7 @@ class ContrastiveLoss(PairLoss):
         return torch.where(torch.le(dist, threshold), 1, 0)
 
 
+# noinspection PyAttributeOutsideInit
 class AdaptiveContrastiveLoss(PairLoss):
     def __init__(self, m=1.0):
         super().__init__()

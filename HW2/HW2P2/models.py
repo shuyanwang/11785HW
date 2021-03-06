@@ -89,7 +89,7 @@ class MLP19(Model):
 
 class ResNetEmbedding(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
+    def __init__(self, block, layers, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None, dropout=0.5):
         super().__init__()
@@ -156,9 +156,8 @@ class ResNetEmbedding(nn.Module):
                     norm_layer(planes * block.expansion),
             )
 
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer))
+        layers = [block(self.inplanes, planes, stride, downsample, self.groups,
+                        self.base_width, previous_dilation, norm_layer)]
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes, groups=self.groups,
@@ -233,8 +232,7 @@ class WideResNet101(Model):
 class ResNet101E(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = ResNetEmbedding(num_classes=4000,
-                                   block=resnet.Bottleneck, layers=[3, 4, 23, 3])
+        self.net = ResNetEmbedding(block=resnet.Bottleneck, layers=[3, 4, 23, 3])
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -243,8 +241,16 @@ class ResNet101E(Model):
 class ResNet18E(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = ResNetEmbedding(num_classes=4000,
-                                   block=resnet.BasicBlock, layers=[2, 2, 2, 2])
+        self.net = ResNetEmbedding(block=resnet.BasicBlock, layers=[2, 2, 2, 2])
 
     def forward(self, x: torch.Tensor):
+        return self.net(x)
+
+
+class ResNet34E(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetEmbedding(resnet.BasicBlock, [3, 4, 6, 3])
+
+    def forward(self, x):
         return self.net(x)

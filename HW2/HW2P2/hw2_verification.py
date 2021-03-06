@@ -301,7 +301,7 @@ def main():
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
-    parser.add_argument('--loss', default='ContrastiveLoss')
+    parser.add_argument('--loss', default='AdaptiveContrastiveLoss')
     # parser.add_argument('--threshold', default='0.5', type=float)
     parser.add_argument('--pos', default='0.3', type=float,
                         help='Probability of choosing same class, otherwise randomly chosen')
