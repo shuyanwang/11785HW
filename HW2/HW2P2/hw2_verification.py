@@ -20,32 +20,35 @@ class ParamsHW2Verification(Params):
     def __init__(self, B, lr, device, flip, normalize,
                  erase, resize, positive, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
-                          '/train_data'):
+                          '/train_data', loss_lr=1e-2):
+
+        self.loss_lr = loss_lr
 
         self.size = 64 if resize <= 0 else resize
 
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=2,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
         self.pos_p = positive
-        self.str = 'verify_b=' + str(self.B) + 'p=' + str(self.pos_p)
+        self.str = 'verify_b=' + str(self.B) + 'p=' + str(self.pos_p) + 'loss_lr=' + str(
+                self.loss_lr) + '_'
 
         transforms_train = []
         transforms_test = []
 
         if self.size != 64:
-            self.str = self.str + '_r' + str(self.size)
+            self.str = self.str + 'r' + str(self.size)
             transforms_train.append(torchvision.transforms.Resize(self.size))
             transforms_test.append(torchvision.transforms.Resize(self.size))
 
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
-            self.str = self.str + '_f'
+            self.str = self.str + 'f'
 
         transforms_train.append(torchvision.transforms.ToTensor())
         transforms_test.append(torchvision.transforms.ToTensor())
 
         if normalize:
-            self.str = self.str + '_n'
+            self.str = self.str + 'n'
             transforms_test.append(
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
             transforms_train.append(
@@ -53,7 +56,9 @@ class ParamsHW2Verification(Params):
 
         if erase:
             transforms_train.append(torchvision.transforms.RandomErasing())
-            self.str = self.str + '_e'
+            self.str = self.str + 'e'
+
+        self.str = self.str + '_'
 
         self.transforms_train = torchvision.transforms.Compose(transforms_train)
         self.transforms_test = torchvision.transforms.Compose(transforms_test)
@@ -132,6 +137,8 @@ class HW2VerificationPair(Learning):
         super().__init__(params, model, torch.optim.Adam, loss,
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
         print(str(self))
+        if 'Adaptive' in loss.__name__:
+            self.criterion.loss_lr = params.loss_lr
 
     def predict(self, y1, y2):
         return self.criterion.predict(y1, y2)
@@ -306,6 +313,7 @@ def main():
     # parser.add_argument('--threshold', default='0.5', type=float)
     parser.add_argument('--pos', default='0.3', type=float,
                         help='Probability of choosing same class, otherwise randomly chosen')
+    parser.add_argument('--loss_lr', default=1e-2, type=float)
 
     args = parser.parse_args()
 

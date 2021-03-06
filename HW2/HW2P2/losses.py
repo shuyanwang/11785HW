@@ -87,7 +87,7 @@ class AdaptiveCosineLoss(PairLoss):
     def __init__(self, m=1.0):
         super().__init__()
         self.m = m
-        self.lr = 1e-2
+        self.lr = 1e-2  # could be modified by outside
         mean_pos = 15 * torch.ones(1)  # running average
         mean_neg = 25 * torch.ones(1)  # Init API in the future
 
