@@ -104,12 +104,15 @@ class Learning(ABC):
         self.model.load_state_dict(loaded['model_state_dict'])
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
 
+        if 'loss_state_dict' in loaded:
+            self.criterion.load_state_dict(loaded['loss_state_dict'])
+
     def save_model(self, epoch, loss_item):
         torch.save({
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
-            'loss': loss_item,
+            'loss_state_dict': self.criterion.state_dict(),
         }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
 
     def train(self):

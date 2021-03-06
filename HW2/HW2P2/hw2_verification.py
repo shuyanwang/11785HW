@@ -18,7 +18,7 @@ num_workers = 8
 
 class ParamsHW2Verification(Params):
     def __init__(self, B, lr, device, flip, normalize,
-                 erase, resize, T, positive, max_epoch=201,
+                 erase, resize, positive, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
                           '/train_data'):
 
@@ -28,7 +28,6 @@ class ParamsHW2Verification(Params):
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
         self.pos_p = positive
         self.str = 'verify_b=' + str(self.B) + 'p=' + str(self.pos_p)
-        self.threshold = T
 
         transforms_train = []
         transforms_test = []
@@ -135,7 +134,7 @@ class HW2VerificationPair(Learning):
         print(str(self))
 
     def predict(self, y1, y2):
-        return self.criterion.predict(y1, y2, threshold=self.params.threshold)
+        return self.criterion.predict(y1, y2)
 
     def _load_train(self):
         train_set = HW2TrainingPairSet(self.params)
@@ -303,7 +302,7 @@ def main():
     parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='ContrastiveLoss')
-    parser.add_argument('--threshold', default='0.5', type=float)
+    # parser.add_argument('--threshold', default='0.5', type=float)
     parser.add_argument('--pos', default='0.3', type=float,
                         help='Probability of choosing same class, otherwise randomly chosen')
 
@@ -312,7 +311,7 @@ def main():
     params = ParamsHW2Verification(B=args.batch, lr=args.lr,
                                    device='cuda:' + args.gpu_id, flip=args.flip,
                                    normalize=args.normalize, erase=args.erase,
-                                   resize=args.resize, T=args.threshold, positive=args.pos)
+                                   resize=args.resize, positive=args.pos)
     model = eval(args.model + '(params)')
     learner = HW2VerificationPair(params, model, eval(args.loss))
 
