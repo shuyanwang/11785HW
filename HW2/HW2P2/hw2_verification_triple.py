@@ -203,7 +203,6 @@ class HW2VerificationTriple(Learning):
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
-                total_loss = torch.zeros(1, device=self.device)
                 total_acc = torch.zeros(1, device=self.device)
 
                 TP = torch.zeros(1, device=self.device)
@@ -219,8 +218,6 @@ class HW2VerificationTriple(Learning):
                     y1 = self.model(bx1)
                     y2 = self.model(bx2)
 
-                    loss = self.criterion(y1, y2, by)
-                    total_loss += loss
                     y_prime = self.predict(y1, y2)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
@@ -233,9 +230,7 @@ class HW2VerificationTriple(Learning):
                     FN += torch.count_nonzero(torch.logical_and(
                             torch.logical_not(y_prime), by))
 
-                loss_item = total_loss.item() / (i + 1)
                 accuracy_item = total_acc.item() / (i + 1) / self.params.B
-                self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
                 self.writer.add_scalar('Precision/Validation', (TP / (TP + FP)).item(), epoch)
                 self.writer.add_scalar('Recall/Validation', (TP / (TP + FN).item()), epoch)
