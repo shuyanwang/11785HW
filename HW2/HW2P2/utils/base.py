@@ -18,7 +18,21 @@ class PairLoss(nn.Module, ABC):
         pass
 
     @abstractmethod
-    def predict(self, y1, y2, *args):
+    def predict(self, y1, y2, *args) -> int:
+        pass
+
+
+class TripletLoss(nn.Module, ABC):
+    @abstractmethod
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def forward(self, y0: torch.Tensor, y_pos: torch.Tensor, y_neg: torch.Tensor) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def predict(self, y1, y2, *args) -> int:
         pass
 
 

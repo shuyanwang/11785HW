@@ -1,10 +1,6 @@
 import torch
 # from torch import nn
-from utils.base import PairLoss
-
-
-# from torch.nn import CosineEmbeddingLoss, HingeEmbeddingLoss, MarginRankingLoss
-# These nn losses are for 1/(-1) labels
+from utils.base import PairLoss, TripletLoss
 
 
 class ContrastiveLoss(PairLoss):
@@ -34,6 +30,34 @@ class ContrastiveLoss(PairLoss):
         :return: (N)
         """
         dist = torch.pairwise_distance(y1, y2, p=2)
+        return torch.where(torch.le(dist, threshold), 1, 0)
+
+
+# noinspection PyAttributeOutsideInit
+class AdaptiveTripletMarginLoss(TripletLoss):
+    def __init__(self, m=1.0):
+        super().__init__()
+        self.m = m
+        self.lr = 1e-2
+        mean_pos = 15 * torch.ones(1)  # running average
+        mean_neg = 25 * torch.ones(1)  # Init API in the future
+
+        self.register_buffer('mean_pos', mean_pos)
+        self.register_buffer('mean_neg', mean_neg)
+
+    def forward(self, y0: torch.Tensor, y_pos: torch.Tensor, y_neg: torch.Tensor) -> torch.Tensor:
+        dist_pos = torch.pairwise_distance(y0, y_pos)
+        dist_neg = torch.pairwise_distance(y0, y_neg)
+
+        self.mean_pos = self.mean_pos * (1 - self.lr) + torch.mean(dist_pos) * self.lr
+        self.mean_neg = self.mean_neg * (1 - self.lr) + torch.mean(dist_neg) * self.lr
+
+        return torch.mean(torch.clamp(dist_pos - dist_neg + self.m, min=0.0))
+
+    def predict(self, y1, y2, *args):
+        threshold = (self.mean_pos.item() + self.mean_neg.item()) / 2
+
+        dist = torch.pairwise_distance(y1, y2)
         return torch.where(torch.le(dist, threshold), 1, 0)
 
 
