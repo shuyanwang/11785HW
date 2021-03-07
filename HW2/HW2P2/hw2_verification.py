@@ -163,11 +163,10 @@ class HW2VerificationPair(Learning):
                                                        batch_size=1, shuffle=False,
                                                        pin_memory=True, num_workers=num_workers)
 
-    def train(self):
+    def train(self, checkpoint_interval=5):
         if self.train_loader is None:
             self._load_train()
 
-        print('Training...')
         with torch.cuda.device(self.device):
             self.model.train()
             for epoch in range(self.init_epoch + 1, self.params.max_epoch):
@@ -215,20 +214,16 @@ class HW2VerificationPair(Learning):
                 self.writer.add_scalar('TPR/Train', (TP / (TP + FN)).item(), epoch)
                 self.writer.add_scalar('FPR/Train', (FP / (TN + FP)).item(), epoch)
 
-                # print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item,
-                #       'Accuracy: ', "%.5f" % accuracy_item)
-
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 5 == 0:
+                if epoch % checkpoint_interval == 0:
                     self.save_model(epoch)
 
     def _validate(self, epoch):
         if self.valid_loader is None:
             self._load_valid()
 
-        # print('Validating...')
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
@@ -270,8 +265,6 @@ class HW2VerificationPair(Learning):
                 self.writer.add_scalar('Recall/Validation', (TP / (TP + FN).item()), epoch)
                 self.writer.add_scalar('TPR/Validation', (TP / (TP + FN)).item(), epoch)
                 self.writer.add_scalar('FPR/Validation', (FP / (TN + FP)).item(), epoch)
-                # print('epoch: ', epoch, 'Validation Loss: ', "%.5f" % loss_item,
-                #       'Accuracy: ', "%.5f" % accuracy_item)
 
     def test(self):
         if self.test_loader is None:

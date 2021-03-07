@@ -118,7 +118,7 @@ class Learning(ABC):
             'loss_state_dict': self.criterion.state_dict(),
         }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
 
-    def train(self):
+    def train(self, checkpoint_interval=5):
         if self.train_loader is None:
             self._load_train()
 
@@ -152,8 +152,8 @@ class Learning(ABC):
                 self._validate(epoch)
                 self.model.train()
 
-                if epoch % 5 == 0:
-                    self.save_model(epoch, loss_item)
+                if epoch % checkpoint_interval == 0:
+                    self.save_model(epoch)
 
     def _validate(self, epoch):
         if self.valid_loader is None:

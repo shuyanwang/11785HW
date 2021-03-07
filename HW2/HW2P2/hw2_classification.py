@@ -125,7 +125,7 @@ def main():
     parser.add_argument('--flip', action='store_true')
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
-    parser.add_argument('--resize', default=0, help='Resize Image', type=int)
+    parser.add_argument('--resize', default=224, help='Resize Image', type=int)
 
     args = parser.parse_args()
 

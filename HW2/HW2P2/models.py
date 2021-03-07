@@ -3,7 +3,7 @@ import torch.nn as nn
 from utils.base import Model
 from torchvision.models.resnet import BasicBlock, Bottleneck
 from hw2_classification import ParamsHW2Classification
-from typing import Union, Optional
+from typing import Union, Type
 
 
 class PerceptronLayer(nn.Module):
@@ -51,7 +51,7 @@ class ResNet(nn.Module):
     https://github.com/KaimingHe/deep-residual-networks
     """
 
-    def __init__(self, block: Optional[Union[BasicBlock, Bottleneck]], layers, embedding=False):
+    def __init__(self, block: Type[Union[BasicBlock, Bottleneck]], layers, embedding=False):
         super().__init__()
         self.embedding = embedding
 
