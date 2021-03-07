@@ -1,6 +1,5 @@
 import os
 import torch.utils.data
-from torch.utils.data.dataset import T_co
 
 from utils.base import Params, Learning
 from tqdm import tqdm
@@ -12,6 +11,8 @@ from losses import *
 
 import argparse
 import numpy as np
+
+from hw2_verification_pair import HW2ValidPairSet
 
 num_workers = 8
 
@@ -105,34 +106,6 @@ class HW2TrainTripleSet(torch.utils.data.Dataset):
                self.transform(pil_loader(os.path.join(self.params.data_dir, str(label3), item3)))
 
 
-class HW2ValidTripleSet(torch.utils.data.Dataset):
-    def __getitem__(self, index) -> T_co:
-        item = self.items[index]
-        return self.transform(pil_loader(item[0])), self.transform(pil_loader(item[1])), item[2], \
-               item[0], item[1]  # for testing
-
-    def __len__(self):
-        return len(self.items)
-
-    def __init__(self, validation, transform):
-        self.set_path = 'c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-verification'
-        txt_path = 'verification_pairs_val.txt' if validation else 'verification_pairs_test.txt'
-        self.items = []
-        self.transform = transform
-        with open(os.path.join(self.set_path, txt_path)) as f:
-            pairs = f.read().splitlines()
-            for pair in pairs:
-                pair = pair.split(' ')
-                if validation:
-                    self.items.append((os.path.join(self.set_path, pair[0]),
-                                       os.path.join(self.set_path, pair[1]),
-                                       1 if int(pair[2]) > 0 else 0, pair[0], pair[1]))
-                else:
-                    self.items.append((os.path.join(self.set_path, pair[0]),
-                                       os.path.join(self.set_path, pair[1]),
-                                       0, pair[0], pair[1]))
-
-
 class HW2VerificationTriple(Learning):
     def __init__(self, params: ParamsHW2Verification, model: Model, loss: PairLoss):
         super().__init__(params, model, torch.optim.Adam, loss,
@@ -151,14 +124,14 @@ class HW2VerificationTriple(Learning):
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_valid(self):
-        valid_set = HW2ValidTripleSet(validation=True, transform=self.params.transforms_test)
+        valid_set = HW2ValidPairSet(validation=True, transform=self.params.transforms_test)
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
-        self.test_set = HW2ValidTripleSet(validation=False, transform=self.params.transforms_test)
+        self.test_set = HW2ValidPairSet(validation=False, transform=self.params.transforms_test)
 
         self.test_loader = torch.utils.data.DataLoader(self.test_set,
                                                        batch_size=1, shuffle=False,
@@ -238,32 +211,30 @@ class HW2VerificationTriple(Learning):
                 TN = torch.zeros(1, device=self.device)
                 FN = torch.zeros(1, device=self.device)
 
-                for i, batch in enumerate(tqdm(self.train_loader)):
-                    bx0 = batch[0].to(self.device)
-                    bx_pos = batch[1].to(self.device)
-                    bx_neg = batch[2].to(self.device)
+                for i, batch in enumerate(tqdm(self.valid_loader)):
+                    bx1 = batch[0].to(self.device)
+                    bx2 = batch[1].to(self.device)
+                    by = batch[2].to(self.device)
 
-                    y0 = self.model(bx0)
-                    y_pos = self.model(bx_pos)
-                    y_neg = self.model(bx_neg)
+                    y1 = self.model(bx1)
+                    y2 = self.model(bx2)
 
-                    loss = self.criterion(y0, y_pos, y_neg)
+                    loss = self.criterion(y1, y2, by)
                     total_loss += loss
-                    y_prime_pos = self.predict(y0, y_pos)
-                    y_prime_neg = self.predict(y0, y_neg)
+                    y_prime = self.predict(y1, y2)
+                    total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
-                    total_acc += (torch.count_nonzero(y_prime_pos) + torch.count_nonzero(
-                            torch.logical_not(y_prime_neg)))
+                    TP += torch.count_nonzero(torch.logical_and(y_prime, by))
+                    TN += torch.count_nonzero(torch.logical_and(
+                            torch.logical_not(y_prime), torch.logical_not(by)))
 
-                    TP += torch.count_nonzero(y_prime_pos)
-                    TN += torch.count_nonzero(torch.logical_not(y_prime_neg))
-
-                    FP += torch.count_nonzero(y_prime_neg)
-                    FN += torch.count_nonzero(torch.logical_not(y_prime_pos))
+                    FP += torch.count_nonzero(torch.logical_and(
+                            y_prime, torch.logical_not(by)))
+                    FN += torch.count_nonzero(torch.logical_and(
+                            torch.logical_not(y_prime), by))
 
                 loss_item = total_loss.item() / (i + 1)
-                accuracy_item = total_acc.item() / (i + 1) / self.params.B / 2
-
+                accuracy_item = total_acc.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
                 self.writer.add_scalar('Precision/Validation', (TP / (TP + FP)).item(), epoch)
