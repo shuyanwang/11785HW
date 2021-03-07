@@ -126,6 +126,7 @@ def main():
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
+    parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
 
     args = parser.parse_args()
 
@@ -138,7 +139,7 @@ def main():
     if args.epoch >= 0:
         learner.load_model(args.epoch)
     if args.train:
-        learner.train()
+        learner.train(checkpoint_interval=args.save)
     if args.test:
         learner.test()
 
