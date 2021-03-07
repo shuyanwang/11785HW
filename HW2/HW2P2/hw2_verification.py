@@ -119,7 +119,7 @@ class HW2ValidPairSet(torch.utils.data.Dataset):
         self.items = []
         self.transform = transform
         with open(os.path.join(self.set_path, txt_path)) as f:
-            pairs = f.readlines()
+            pairs = f.read().splitlines()
             for pair in pairs:
                 pair = pair.split(' ')
                 if validation:
@@ -285,8 +285,8 @@ class HW2VerificationPair(Learning):
                         y2 = self.model(x2)
 
                         f.write(self.test_set.items[i][3] + ' ' +
-                                self.test_set.items[i][4] + ' ' +
-                                str(self.predict(y1, y2)) + '\n')
+                                self.test_set.items[i][4] + ',' +
+                                str(self.predict(y1, y2).item()) + '\n')
 
 
 def main():
