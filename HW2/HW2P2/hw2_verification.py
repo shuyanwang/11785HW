@@ -213,6 +213,7 @@ class HW2VerificationPair(Learning):
                 self.writer.add_scalar('Recall/Train', (TP / (TP + FN).item()), epoch)
                 self.writer.add_scalar('TPR/Train', (TP / (TP + FN)).item(), epoch)
                 self.writer.add_scalar('FPR/Train', (FP / (TN + FP)).item(), epoch)
+                self.writer.add_scalar('F1/Train', (2 * TP / (2 * TP + FN + FP)).item(), epoch)
 
                 self._validate(epoch)
                 self.model.train()
@@ -265,6 +266,7 @@ class HW2VerificationPair(Learning):
                 self.writer.add_scalar('Recall/Validation', (TP / (TP + FN).item()), epoch)
                 self.writer.add_scalar('TPR/Validation', (TP / (TP + FN)).item(), epoch)
                 self.writer.add_scalar('FPR/Validation', (FP / (TN + FP)).item(), epoch)
+                self.writer.add_scalar('F1/Validation', (2 * TP / (2 * TP + FN + FP)).item(), epoch)
 
     def test(self):
         if self.test_loader is None:
