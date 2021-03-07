@@ -304,6 +304,7 @@ def main():
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='AdaptiveContrastiveLoss')
     # parser.add_argument('--threshold', default='0.5', type=float)
+    parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
     parser.add_argument('--pos', default='0.3', type=float,
                         help='Probability of choosing same class, otherwise randomly chosen')
     parser.add_argument('--loss_lr', default=1e-2, type=float)
@@ -323,7 +324,7 @@ def main():
         else:
             learner.load_model(args.epoch, args.load)
     if args.train:
-        learner.train()
+        learner.train(args.save)
     if args.test:
         learner.test()
 
