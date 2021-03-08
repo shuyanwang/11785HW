@@ -143,6 +143,9 @@ class HW2VerificationPair(Learning):
     def predict(self, y1, y2):
         return self.criterion.predict(y1, y2)
 
+    def score(self, y1, y2):
+        return self.criterion.score(y1, y2)
+
     def _load_train(self):
         train_set = HW2TrainingPairSet(self.params)
         self.train_loader = torch.utils.data.DataLoader(train_set,
@@ -286,7 +289,7 @@ class HW2VerificationPair(Learning):
 
                         f.write(self.test_set.items[i][3] + ' ' +
                                 self.test_set.items[i][4] + ',' +
-                                str(self.predict(y1, y2).item()) + '\n')
+                                str(self.score(y1, y2).item()) + '\n')
 
 
 def main():

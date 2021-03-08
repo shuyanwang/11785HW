@@ -3,38 +3,43 @@ import torch
 from utils.base import PairLoss, TripletLoss
 
 
-class ContrastiveLoss(PairLoss):
-    def __init__(self, m=1.0):
-        super(ContrastiveLoss, self).__init__()
-        self.m = m
-
-    def forward(self, x1, x2, y):
-        """
-        Hinge embedding loss for 0-1, 2 class
-        :param x1:
-        :param x2:
-        :param y: 0 - 1
-        :return:
-        """
-
-        dist = torch.pairwise_distance(x1, x2, p=2)
-        return torch.mean(torch.clamp(self.m - dist, min=0.0) * (1 - y) + dist * y)
-
-    @staticmethod
-    def predict(y1, y2, threshold):
-        """
-        Prediction
-        :param y1: (N,*)
-        :param y2:
-        :param threshold: float
-        :return: (N)
-        """
-        dist = torch.pairwise_distance(y1, y2, p=2)
-        return torch.where(torch.le(dist, threshold), 1, 0)
+#
+# class ContrastiveLoss(PairLoss):
+#     def __init__(self, m=1.0):
+#         super(ContrastiveLoss, self).__init__()
+#         self.m = m
+#
+#     def forward(self, x1, x2, y):
+#         """
+#         Hinge embedding loss for 0-1, 2 class
+#         :param x1:
+#         :param x2:
+#         :param y: 0 - 1
+#         :return:
+#         """
+#
+#         dist = torch.pairwise_distance(x1, x2, p=2)
+#         return torch.mean(torch.clamp(self.m - dist, min=0.0) * (1 - y) + dist * y)
+#
+#     @staticmethod
+#     def predict(y1, y2, threshold):
+#         """
+#         Prediction
+#         :param y1: (N,*)
+#         :param y2:
+#         :param threshold: float
+#         :return: (N)
+#         """
+#         dist = torch.pairwise_distance(y1, y2, p=2)
+#         return torch.where(torch.le(dist, threshold), 1, 0)
 
 
 # noinspection PyAttributeOutsideInit
 class AdaptiveTripletMarginLoss(TripletLoss):
+    def score(self, y1, y2):
+        dist = torch.pairwise_distance(y1, y2)
+        return 1 / (1 + dist)
+
     def __init__(self, m=1.0):
         super().__init__()
         self.m = m
@@ -63,6 +68,10 @@ class AdaptiveTripletMarginLoss(TripletLoss):
 
 # noinspection PyAttributeOutsideInit
 class AdaptiveContrastiveLoss(PairLoss):
+    def score(self, y1, y2):
+        dist = torch.pairwise_distance(y1, y2)
+        return 1 / (1 + dist)
+
     def __init__(self, m=1.0):
         super().__init__()
         self.m = m
@@ -108,6 +117,9 @@ class AdaptiveContrastiveLoss(PairLoss):
 
 # noinspection PyAttributeOutsideInit
 class AdaptiveCosineLoss(PairLoss):
+    def score(self, y1, y2):
+        return torch.cosine_similarity(y1, y2)
+
     def __init__(self, m=1.0):
         super().__init__()
         self.m = m
@@ -151,30 +163,30 @@ class AdaptiveCosineLoss(PairLoss):
         return torch.where(torch.ge(torch.cosine_similarity(y1, y2), threshold), 1, 0)
 
 
-class CosineLoss(PairLoss):
-    def __init__(self, m=1.0):
-        super().__init__()
-        self.m = m
-
-    def forward(self, x1, x2, y):
-        """
-        Hinge embedding loss for 0-1, 2 class
-        :param x1:
-        :param x2:
-        :param y: 0 - 1
-        :return:
-        """
-        similarity = torch.cosine_similarity(x1, x2)
-        return torch.mean(
-                torch.clamp(similarity - self.m, min=0.0) * (1 - y) + (1 - similarity) * y)
-
-    @staticmethod
-    def predict(y1, y2, threshold):
-        """
-        Prediction
-        :param y1: (N,*)
-        :param y2:
-        :param threshold: float
-        :return: (N)
-        """
-        return torch.where(torch.ge(torch.cosine_similarity(y1, y2), threshold), 1, 0)
+# class CosineLoss(PairLoss):
+#     def __init__(self, m=1.0):
+#         super().__init__()
+#         self.m = m
+#
+#     def forward(self, x1, x2, y):
+#         """
+#         Hinge embedding loss for 0-1, 2 class
+#         :param x1:
+#         :param x2:
+#         :param y: 0 - 1
+#         :return:
+#         """
+#         similarity = torch.cosine_similarity(x1, x2)
+#         return torch.mean(
+#                 torch.clamp(similarity - self.m, min=0.0) * (1 - y) + (1 - similarity) * y)
+#
+#     @staticmethod
+#     def predict(y1, y2, threshold):
+#         """
+#         Prediction
+#         :param y1: (N,*)
+#         :param y2:
+#         :param threshold: float
+#         :return: (N)
+#         """
+#         return torch.where(torch.ge(torch.cosine_similarity(y1, y2), threshold), 1, 0)

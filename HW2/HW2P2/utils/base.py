@@ -21,6 +21,10 @@ class PairLoss(nn.Module, ABC):
     def predict(self, y1, y2, *args) -> int:
         pass
 
+    @abstractmethod
+    def score(self, y1, y2):
+        pass
+
 
 class TripletLoss(nn.Module, ABC):
     @abstractmethod
@@ -32,7 +36,11 @@ class TripletLoss(nn.Module, ABC):
         pass
 
     @abstractmethod
-    def predict(self, y1, y2, *args) -> int:
+    def predict(self, y1, y2, *args):
+        pass
+
+    @abstractmethod
+    def score(self, y1, y2):
         pass
 
 
