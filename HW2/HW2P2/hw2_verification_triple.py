@@ -283,7 +283,7 @@ def main():
     params = ParamsHW2Verification(B=args.batch, lr=args.lr,
                                    device='cuda:' + args.gpu_id, flip=args.flip,
                                    normalize=args.normalize, erase=args.erase,
-                                   resize=args.resize)
+                                   resize=args.resize, loss_lr=args.loss_lr)
     model = eval(args.model + '(params)')
     learner = HW2VerificationTriple(params, model, eval(args.loss))
 
