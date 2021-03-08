@@ -19,7 +19,7 @@ num_workers = 8
 
 class ParamsHW2Verification(Params):
     def __init__(self, B, lr, device, flip, normalize,
-                 erase, resize, positive, max_epoch=201,
+                 erase, resize, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
                           '/train_data', loss_lr=1e-2):
 
@@ -29,9 +29,7 @@ class ParamsHW2Verification(Params):
 
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=2,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
-        self.pos_p = positive
-        self.str = 'verify_b=' + str(self.B) + 'p=' + str(self.pos_p) + 'loss_lr=' + str(
-                self.loss_lr) + '_'
+        self.str = 'verify_b=' + str(self.B) + 'loss_lr=' + str(self.loss_lr) + '_'
 
         transforms_train = []
         transforms_test = []
@@ -278,8 +276,6 @@ def main():
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='AdaptiveTripletMarginLoss')
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
-    parser.add_argument('--pos', default='0.5', type=float,
-                        help='Probability of choosing same class, otherwise randomly chosen')
     parser.add_argument('--loss_lr', default=1e-2, type=float)
 
     args = parser.parse_args()
@@ -287,7 +283,7 @@ def main():
     params = ParamsHW2Verification(B=args.batch, lr=args.lr,
                                    device='cuda:' + args.gpu_id, flip=args.flip,
                                    normalize=args.normalize, erase=args.erase,
-                                   resize=args.resize, positive=args.pos)
+                                   resize=args.resize)
     model = eval(args.model + '(params)')
     learner = HW2VerificationTriple(params, model, eval(args.loss))
 
