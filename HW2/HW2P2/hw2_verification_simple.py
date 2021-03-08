@@ -69,14 +69,14 @@ class ParamsHW2Verification(Params):
 
 
 class HW2VerificationSimple(Learning):
-    def __init__(self, params: ParamsHW2Verification, model: Model, loss: PairLoss):
-        super().__init__(params, model, torch.optim.Adam, loss,
-                         string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
+    def __init__(self, params: ParamsHW2Verification, model: Model):
+        super().__init__(params, model, torch.optim.Adam, torch.nn.CrossEntropyLoss,
+                         string='simple_' + model.__class__.__name__ + '_' + str(params))
         print(str(self))
-        if 'Adaptive' in loss.__name__:
-            self.criterion.loss_lr = params.loss_lr
 
     def predict(self, y1, y2):
+        y1 = torch.argmax(y1, dim=1)
+        y2 = torch.argmax(y2, dim=1)
         return torch.eq(y1, y2).int()
 
     def _load_train(self):
@@ -139,6 +139,18 @@ class HW2VerificationSimple(Learning):
                                 self.test_set.items[i][4] + ',' +
                                 str(self.predict(y1, y2).item()) + '\n')
 
+    def load_model(self, epoch=20, name=None):
+        if name is None:
+            loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
+        else:
+            loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar')
+        self.init_epoch = loaded['epoch']
+        model_states = loaded['model_state_dict']
+        # del model_states['net.linear.weight']
+        # del model_states['net.linear.bias']
+
+        self.model.load_state_dict(model_states)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -155,7 +167,6 @@ def main():
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
-    parser.add_argument('--loss', default='AdaptiveTripletMarginLoss')
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
     parser.add_argument('--pos', default='0.5', type=float,
                         help='Probability of choosing same class, otherwise randomly chosen')
@@ -168,7 +179,7 @@ def main():
                                    normalize=args.normalize, erase=args.erase,
                                    resize=args.resize, positive=args.pos)
     model = eval(args.model + '(params)')
-    learner = HW2VerificationSimple(params, model, eval(args.loss))
+    learner = HW2VerificationSimple(params, model)
 
     if args.epoch >= 0:
         if args.load == '':
@@ -176,9 +187,8 @@ def main():
         else:
             learner.load_model(args.epoch, args.load)
 
-    if args.train:
-        assert False
     if args.test:
+        learner._validate(learner.init_epoch)
         learner.test()
 
 
