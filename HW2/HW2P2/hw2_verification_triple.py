@@ -138,6 +138,8 @@ class HW2VerificationTriple(Learning):
                                                        pin_memory=True, num_workers=num_workers)
 
     def train(self, checkpoint_interval=5):
+        self._validate(self.init_epoch)
+
         if self.train_loader is None:
             self._load_train()
 

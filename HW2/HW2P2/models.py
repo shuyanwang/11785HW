@@ -189,3 +189,12 @@ class ResNet34E(Model):
 
     def forward(self, x):
         return self.net(x)
+
+
+class ResNet10E(Model):
+    def __init__(self, params: ParamsHW2Classification):
+        super().__init__(params)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=True)
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
