@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+
 import torch.utils.data
 
 from utils.base import Params, Learning
@@ -13,6 +15,7 @@ import argparse
 import numpy as np
 
 from hw2_verification_pair import HW2ValidPairSet
+from sklearn.metrics import roc_auc_score
 
 num_workers = 8
 
@@ -108,6 +111,9 @@ class HW2VerificationTriple(Learning):
     def __init__(self, params: ParamsHW2Verification, model: Model, loss: PairLoss):
         super().__init__(params, model, torch.optim.Adam, loss,
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
+
+        self.gt_labels: Optional[np.ndarray] = None
+
         print(str(self))
         if 'Adaptive' in loss.__name__:
             self.criterion.loss_lr = params.loss_lr
@@ -126,6 +132,7 @@ class HW2VerificationTriple(Learning):
 
     def _load_valid(self):
         valid_set = HW2ValidPairSet(validation=True, transform=self.params.transforms_test)
+        self.gt_labels = valid_set.gt_array
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
@@ -139,7 +146,7 @@ class HW2VerificationTriple(Learning):
                                                        pin_memory=True, num_workers=num_workers)
 
     def train(self, checkpoint_interval=5):
-        # self._validate(self.init_epoch)
+        self._validate(self.init_epoch)
 
         if self.train_loader is None:
             self._load_train()
@@ -203,6 +210,8 @@ class HW2VerificationTriple(Learning):
         if self.valid_loader is None:
             self._load_valid()
 
+        valid_scores = np.zeros(self.gt_labels.shape)
+
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
@@ -222,6 +231,11 @@ class HW2VerificationTriple(Learning):
                     y2 = self.model(bx2)
 
                     y_prime = self.predict(y1, y2)
+
+                    score = self.score(y1, y2)
+                    valid_scores[i * self.params.B:i * self.params.B + by.shape[
+                        0]] = score.cpu().detach().numpy()
+
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
 
                     TP += torch.count_nonzero(torch.logical_and(y_prime, by))
@@ -240,6 +254,8 @@ class HW2VerificationTriple(Learning):
                 self.writer.add_scalar('TPR/Validation', (TP / (TP + FN)).item(), epoch)
                 self.writer.add_scalar('FPR/Validation', (FP / (TN + FP)).item(), epoch)
                 self.writer.add_scalar('F1/Validation', (2 * TP / (2 * TP + FN + FP)).item(), epoch)
+                self.writer.add_scalar('Score/Validation',
+                                       roc_auc_score(self.gt_labels, valid_scores), epoch)
 
     def test(self):
         if self.test_loader is None:

@@ -131,6 +131,10 @@ class HW2ValidPairSet(torch.utils.data.Dataset):
                                        os.path.join(self.set_path, pair[1]),
                                        0, pair[0], pair[1]))
 
+        self.gt_array = np.zeros(len(self.items), dtype=int)
+        for (i, item) in enumerate(self.items):
+            self.gt_array[i] = item[2]
+
 
 class HW2VerificationPair(Learning):
     def __init__(self, params: ParamsHW2Verification, model: Model, loss: PairLoss):
