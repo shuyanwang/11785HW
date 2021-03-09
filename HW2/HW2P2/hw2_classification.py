@@ -8,7 +8,7 @@ from models import *
 
 import argparse
 
-num_workers = 8
+num_workers = 6
 
 
 class ParamsHW2Classification(Params):

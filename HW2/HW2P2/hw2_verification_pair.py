@@ -13,7 +13,7 @@ from losses import *
 import argparse
 import numpy as np
 
-num_workers = 8
+num_workers = 6
 
 
 class ParamsHW2Verification(Params):

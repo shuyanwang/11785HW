@@ -17,7 +17,7 @@ import numpy as np
 from hw2_verification_pair import HW2ValidPairSet
 from sklearn.metrics import roc_auc_score
 
-num_workers = 8
+num_workers = 6
 
 
 class ParamsHW2Verification(Params):
