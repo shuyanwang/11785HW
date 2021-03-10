@@ -1,9 +1,57 @@
 import torch
 import torch.nn as nn
 from utils.base import Model
-from torchvision.models.resnet import BasicBlock, Bottleneck
 from hw2_classification import ParamsHW2Classification
 from typing import Union, Type
+
+
+class BasicBlock(nn.Module):
+    def __init__(self, cin, cout, stride=1, down_sample=False):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(cin, cout, kernel_size=3, stride=stride, bias=False, padding=1)
+        self.bn1 = nn.BatchNorm2d(cout)
+
+        self.conv2 = nn.Conv2d(cout, cout, kernel_size=3, bias=False, padding=1)
+        self.bn2 = nn.BatchNorm2d(cout)
+
+        self.downsample = nn.Sequential(
+                nn.Conv2d(cin, cout, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(cout)) if down_sample else None
+
+    def forward(self, x: torch.Tensor):
+        out = self.bn2(self.conv2(torch.relu(self.bn1(self.conv1(x)))))
+
+        down_sampled = self.downsample(x) if self.downsample is not None else x
+
+        return torch.relu(out + down_sampled)
+
+
+class BottleNeckBlock(nn.Module):
+    def __init__(self, cin, cout, stride=1, down_sample=False):
+        super().__init__()
+        # BottleNeckBlock: 3-layered: cin->4*cout
+        self.conv1 = nn.Conv2d(cin, cout, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(cout)
+
+        self.conv2 = nn.Conv2d(cout, cout, kernel_size=3, stride=stride, bias=False, padding=1)
+        self.bn2 = nn.BatchNorm2d(cout)
+
+        self.conv3 = nn.Conv2d(cout, cout * 4, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(cout * 4)
+
+        self.downsample = nn.Sequential(
+                nn.Conv2d(cin, cout * 4, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(cout * 4)) if down_sample else None
+
+    def forward(self, x: torch.Tensor):
+        out = torch.relu(self.bn1(self.conv1(x)))
+        out = torch.relu(self.bn2(self.conv2(out)))
+        out = self.bn3(self.conv3(out))
+
+        down_sampled = self.downsample(x) if self.downsample is not None else x
+
+        return torch.relu(out + down_sampled)
 
 
 class PerceptronLayer(nn.Module):
@@ -42,20 +90,19 @@ class ResNet(nn.Module):
     """
     Note1:
         The architecture is from https://arxiv.org/abs/1512.03385 (ResNet) and the
-        pytorch release at https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html
-
-        The model below is used to generate the best results submitted;
-        it is a simplified version of the official ResNet and modified to adapt to HW2
+        pytorch doc at https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html
+        It is a simplified version of the ResNet and it adapts to HW2
 
     Note2:
-    As per course policy at https://piazza.com/class/khtqzctrciu1fp?cid=71,
-    I looked at some public resources, including:
-    https://towardsdatascience.com/an-overview-of-resnet-and-its-variants-5281e2f56035
-    https://ngc.nvidia.com/catalog/resources/nvidia:resnet_50_v1_5_for_pytorch
-    https://github.com/KaimingHe/deep-residual-networks
+        As per course policy at https://piazza.com/class/khtqzctrciu1fp?cid=71,
+        I looked at some public resources, including:
+        https://towardsdatascience.com/an-overview-of-resnet-and-its-variants-5281e2f56035
+        https://ngc.nvidia.com/catalog/resources/nvidia:resnet_50_v1_5_for_pytorch
+        https://github.com/KaimingHe/deep-residual-networks
     """
 
-    def __init__(self, block: Type[Union[BasicBlock, Bottleneck]], layers, embedding=False):
+    def __init__(self, block: Type[Union[BasicBlock, BottleNeckBlock]], layers, embedding=False,
+                 num_classes=4000):
         super().__init__()
         self.embedding = embedding
 
@@ -76,7 +123,8 @@ class ResNet(nn.Module):
         self.pool2 = nn.AdaptiveAvgPool2d((1, 1))
 
         if not embedding:
-            self.linear = nn.Linear(block.expansion * 512, 4000)
+            self.linear = nn.Linear((4 if block.__name__ == 'BottleNeckBlock' else 1) * 512,
+                                    num_classes)
         else:
             self.linear = None
 
@@ -91,16 +139,13 @@ class ResNet(nn.Module):
 
     def residual_layer(self, block, cout, num_blocks, stride):
 
-        #### For bottleneck blocks, we need to down-sample
+        #### For BottleNeckBlock blocks, we need to down-sample
         # because we need cin to match cout for addition
-        down_sample = None
-        if stride > 1 or self.cin != cout * block.expansion:
-            down_sample = nn.Sequential(
-                    nn.Conv2d(self.cin, cout * block.expansion, kernel_size=1, stride=stride,
-                              bias=False), nn.BatchNorm2d(cout * block.expansion))
 
-        layers = [block(self.cin, cout, stride, down_sample)]
-        self.cin = cout * block.expansion
+        expansion = 4 if block.__name__ == 'BottleNeckBlock' else 1
+
+        layers = [block(self.cin, cout, stride, stride > 1 or self.cin != cout * expansion)]
+        self.cin = cout * expansion
         for _ in range(1, num_blocks):
             layers.append(block(self.cin, cout))
 
@@ -126,7 +171,7 @@ class ResNet(nn.Module):
 class ResNet101(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = ResNet(Bottleneck, [3, 4, 23, 3])
+        self.net = ResNet(BottleNeckBlock, [3, 4, 23, 3])
 
     def forward(self, x):
         return self.net(x)
@@ -162,7 +207,7 @@ class ResNet10(Model):
 class ResNet152(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = ResNet(Bottleneck, [3, 8, 36, 3])
+        self.net = ResNet(BottleNeckBlock, [3, 8, 36, 3])
 
     def forward(self, x):
         return self.net(x)
@@ -171,7 +216,7 @@ class ResNet152(Model):
 class ResNet101E(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = ResNet(block=Bottleneck, layers=[3, 4, 23, 3], embedding=True)
+        self.net = ResNet(block=BottleNeckBlock, layers=[3, 4, 23, 3], embedding=True)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
