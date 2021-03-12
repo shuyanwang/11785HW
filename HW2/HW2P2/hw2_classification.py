@@ -134,6 +134,7 @@ def main():
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
     parser.add_argument('--perspective', action='store_true')
+    parser.add_argument('--load', default='', help='Load Name')
 
     args = parser.parse_args()
 
@@ -144,7 +145,11 @@ def main():
     model = eval(args.model + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
-        learner.load_model(args.epoch)
+        if args.load == '':
+            learner.load_model(args.epoch)
+        else:
+            learner.load_model(args.epoch, args.load)
+
     if args.train:
         learner.train(checkpoint_interval=args.save)
     if args.test:
