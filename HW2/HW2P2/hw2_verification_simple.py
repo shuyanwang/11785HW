@@ -19,7 +19,7 @@ num_workers = 6
 
 class ParamsHW2Verification(Params):
     def __init__(self, B, lr, device, flip, normalize,
-                 erase, resize, positive, max_epoch=201,
+                 erase, resize, positive, perspective, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
                           '/train_data', loss_lr=1e-2):
 
@@ -44,6 +44,10 @@ class ParamsHW2Verification(Params):
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
             self.str = self.str + 'f'
+
+        if perspective:
+            transforms_train.append(torchvision.transforms.RandomPerspective())
+            self.str = self.str + 'p'
 
         transforms_train.append(torchvision.transforms.ToTensor())
         transforms_test.append(torchvision.transforms.ToTensor())

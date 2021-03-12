@@ -4,16 +4,17 @@ from utils.base import Params, Learning
 from tqdm import tqdm
 import torchvision
 
+from model_efficientnet import *
 from models import *
 
 import argparse
 
-num_workers = 6
+num_workers = 2
 
 
 class ParamsHW2Classification(Params):
     def __init__(self, B, lr, dropout, device, flip, normalize,
-                 erase, resize, max_epoch=201,
+                 erase, resize, perspective, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'):
 
         self.size = 64 if resize <= 0 else resize
@@ -21,25 +22,30 @@ class ParamsHW2Classification(Params):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout, output_channels=4000,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
 
-        self.str = 'class_b=' + str(self.B) + 'lr=' + str(self.lr) + 'd=' + str(self.dropout)
+        self.str = 'class_b=' + str(self.B) + 'lr=' + str(
+                self.lr) + '_'  # 'd=' + str(self.dropout)'
 
         transforms_train = []
         transforms_test = []
 
         if self.size != 64:
-            self.str = self.str + '_r' + str(self.size)
+            self.str = self.str + 'r' + str(self.size)
             transforms_train.append(torchvision.transforms.Resize(self.size))
             transforms_test.append(torchvision.transforms.Resize(self.size))
 
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
-            self.str = self.str + '_f'
+            self.str = self.str + 'f'
+
+        if perspective:
+            transforms_train.append(torchvision.transforms.RandomPerspective())
+            self.str = self.str + 'p'
 
         transforms_train.append(torchvision.transforms.ToTensor())
         transforms_test.append(torchvision.transforms.ToTensor())
 
         if normalize:
-            self.str = self.str + '_n'
+            self.str = self.str + 'n'
             transforms_test.append(
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
             transforms_train.append(
@@ -47,7 +53,7 @@ class ParamsHW2Classification(Params):
 
         if erase:
             transforms_train.append(torchvision.transforms.RandomErasing())
-            self.str = self.str + '_e'
+            self.str = self.str + 'e'
 
         self.transforms_train = torchvision.transforms.Compose(transforms_train)
         self.transforms_test = torchvision.transforms.Compose(transforms_test)
@@ -127,13 +133,14 @@ def main():
     parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
+    parser.add_argument('--perspective', action='store_true')
 
     args = parser.parse_args()
 
     params = ParamsHW2Classification(B=args.batch, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id, flip=args.flip,
                                      normalize=args.normalize, erase=args.erase,
-                                     resize=args.resize)
+                                     resize=args.resize, perspective=args.perspective)
     model = eval(args.model + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
