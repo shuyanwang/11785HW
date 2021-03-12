@@ -95,8 +95,8 @@ class Learning(ABC):
         if draw_graph:
             self.writer.add_graph(model, torch.rand([params.B] + list(params.input_dims),
                                                     device=self.device))
-
-        self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
+        if optimizer_handle is not None:
+            self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
         self.criterion = criterion_handle().cuda(self.device)
 
         self.init_epoch = 0

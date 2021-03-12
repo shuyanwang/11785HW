@@ -40,3 +40,13 @@ class EfficientNetB0(Model):
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+
+
+class PretrainedB7(Model):
+    def __init__(self, params):
+        super(PretrainedB7, self).__init__(params)
+        self.net = EfficientNet.from_pretrained('efficientnet-b7',
+                                                num_classes=params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
