@@ -8,7 +8,7 @@ from tqdm import tqdm
 import torchvision
 from torchvision.datasets.folder import pil_loader
 
-from models import *
+from model_efficientnet import *
 from losses import *
 
 import argparse
@@ -22,7 +22,7 @@ num_workers = 6
 
 class ParamsHW2Verification(Params):
     def __init__(self, B, lr, device, flip, normalize,
-                 erase, resize, max_epoch=201,
+                 erase, resize, perspective, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
                           '/train_data', loss_lr=1e-2):
 
@@ -45,6 +45,10 @@ class ParamsHW2Verification(Params):
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
             self.str = self.str + 'f'
+
+        if perspective:
+            transforms_train.append(torchvision.transforms.RandomPerspective())
+            self.str = self.str + 'p'
 
         transforms_train.append(torchvision.transforms.ToTensor())
         transforms_test.append(torchvision.transforms.ToTensor())
@@ -295,14 +299,16 @@ def main():
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='AdaptiveTripletMarginLoss')
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
-    parser.add_argument('--loss_lr', default=1e-2, type=float)
+    parser.add_argument('--loss_lr', default=1e-3, type=float)
+    parser.add_argument('--perspective', action='store_true')
 
     args = parser.parse_args()
 
     params = ParamsHW2Verification(B=args.batch, lr=args.lr,
                                    device='cuda:' + args.gpu_id, flip=args.flip,
                                    normalize=args.normalize, erase=args.erase,
-                                   resize=args.resize, loss_lr=args.loss_lr)
+                                   resize=args.resize, loss_lr=args.loss_lr,
+                                   perspective=args.perspective)
     model = eval(args.model + '(params)')
     learner = HW2VerificationTriple(params, model, eval(args.loss))
 
