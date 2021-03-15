@@ -29,20 +29,22 @@ class CenterLoss(nn.Module):
         distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
                   torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes,
                                                                              batch_size).t()
-        distmat.addmm_(x, self.centers.t(), 1, -2)
+        # distmat.addmm_(x, self.centers.t(), 1, -2)
+
+        distmat -= 2 * x @ self.centers.t()
 
         labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
         mask = labels.eq(self.classes.expand(batch_size, self.num_classes))
 
-        dist = []
-        for i in range(batch_size):
-            value = distmat[i][mask[i]]
-            value = value.clamp(min=1e-12, max=1e+12)  # for numerical stability
-            dist.append(value)
-        dist = torch.cat(dist)
-        loss = dist.mean()
+        # dist = torch.zeros(batch_size,device=x.device)
+        # for i in range(batch_size):
+        #     value = distmat[i][mask[i]]
+        #     dist[i] = value.clamp(min=1e-12, max=1e+12)  # for numerical stability
+        # loss = dist.mean()
 
-        return loss
+        return torch.mean(torch.masked_select(distmat, mask))
+
+        # return loss
 
 
 class CrossEntropyCenterLoss(nn.Module):
