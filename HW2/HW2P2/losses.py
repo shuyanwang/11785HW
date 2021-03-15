@@ -67,6 +67,55 @@ class AdaptiveTripletMarginLoss(TripletLoss):
         return torch.where(torch.le(dist, threshold), 1, 0)
 
 
+class SwapTripletCosineLoss(TripletLoss):
+    def score(self, y1, y2):
+        return torch.cosine_similarity(y1, y2)
+
+    @staticmethod
+    def dist(y0, y1):
+        return torch.clamp(1 - torch.cosine_similarity(y0, y1), min=0.0)
+
+    def __init__(self, m=0.1):
+        super().__init__()
+        self.loss = nn.TripletMarginWithDistanceLoss(distance_function=self.dist, margin=m,
+                                                     swap=True)
+
+    def forward(self, y0: torch.Tensor, y_pos: torch.Tensor, y_neg: torch.Tensor) -> torch.Tensor:
+        return self.loss(y0, y_pos, y_neg)
+
+
+class SwapTripletMarginLoss(TripletLoss):
+    def score(self, y1, y2):
+        dist = torch.pairwise_distance(y1, y2)
+        return 1 / (1 + dist)
+
+    def __init__(self, m=1.0):
+        super().__init__()
+        self.loss = nn.TripletMarginWithDistanceLoss(margin=m, swap=True)
+
+    def forward(self, y0: torch.Tensor, y_pos: torch.Tensor, y_neg: torch.Tensor) -> torch.Tensor:
+        return self.loss(y0, y_pos, y_neg)
+
+
+# noinspection PyAttributeOutsideInit
+class TripletCosineLoss(TripletLoss):
+    def score(self, y1, y2):
+        return torch.cosine_similarity(y1, y2)
+
+    def __init__(self, m=1.0):
+        super().__init__()
+        self.m = m
+
+    def forward(self, y0: torch.Tensor, y_pos: torch.Tensor, y_neg: torch.Tensor) -> torch.Tensor:
+        dist_pos = 1 - torch.cosine_similarity(y0, y_pos)
+        dist_neg = 1 - torch.cosine_similarity(y0, y_neg)
+
+        return torch.mean(torch.clamp(dist_pos - dist_neg + self.m, min=0.0))
+
+    def predict(self, y1, y2, *args):
+        pass
+
+
 # noinspection PyAttributeOutsideInit
 class AdaptiveContrastiveLoss(PairLoss):
     def score(self, y1, y2):

@@ -5,7 +5,6 @@ from torch.utils.tensorboard import SummaryWriter
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from tqdm import tqdm
-from typing import List
 
 
 class PairLoss(nn.Module, ABC):
@@ -17,7 +16,6 @@ class PairLoss(nn.Module, ABC):
     def forward(self, y1: torch.Tensor, y2: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
         pass
 
-    @abstractmethod
     def predict(self, y1, y2, *args) -> int:
         pass
 
@@ -35,7 +33,6 @@ class TripletLoss(nn.Module, ABC):
     def forward(self, y0: torch.Tensor, y_pos: torch.Tensor, y_neg: torch.Tensor) -> torch.Tensor:
         pass
 
-    @abstractmethod
     def predict(self, y1, y2, *args):
         pass
 
@@ -97,7 +94,9 @@ class Learning(ABC):
                                                     device=self.device))
         if optimizer_handle is not None:
             self.optimizer = optimizer_handle(self.model.parameters(), lr=self.params.lr)
-        self.criterion = criterion_handle().cuda(self.device)
+
+        if criterion_handle is not None:
+            self.criterion = criterion_handle().cuda(self.device)
 
         self.init_epoch = 0
 

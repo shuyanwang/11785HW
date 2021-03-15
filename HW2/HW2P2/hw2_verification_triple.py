@@ -24,15 +24,15 @@ class ParamsHW2Verification(Params):
     def __init__(self, B, lr, device, flip, normalize,
                  erase, resize, perspective, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
-                          '/train_data', loss_lr=1e-2):
+                          '/train_data', margin=1.0):
 
-        self.loss_lr = loss_lr
+        self.margin = margin
 
         self.size = 64 if resize <= 0 else resize
 
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=2,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
-        self.str = 'verify_b=' + str(self.B) + 'loss_lr=' + str(self.loss_lr) + '_'
+        self.str = 'verify_b=' + str(self.B) + 'margin=' + str(margin) + '_'
 
         transforms_train = []
         transforms_test = []
@@ -112,15 +112,13 @@ class HW2TrainTripleSet(torch.utils.data.Dataset):
 
 
 class HW2VerificationTriple(Learning):
-    def __init__(self, params: ParamsHW2Verification, model: Model, loss: PairLoss):
-        super().__init__(params, model, torch.optim.Adam, loss,
+    def __init__(self, params: ParamsHW2Verification, model: Model, loss: TripletLoss):
+        super().__init__(params, model, torch.optim.Adam, None,
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
 
         self.gt_labels: Optional[np.ndarray] = None
-
+        self.criterion = loss(m=params.margin).cuda(params.device)
         print(str(self))
-        if 'Adaptive' in loss.__name__:
-            self.criterion.loss_lr = params.loss_lr
 
     def predict(self, y1, y2):
         return self.criterion.predict(y1, y2)
@@ -160,12 +158,12 @@ class HW2VerificationTriple(Learning):
             for epoch in range(self.init_epoch + 1, self.params.max_epoch):
                 print('Epoch:', epoch)
                 total_loss = torch.zeros(1, device=self.device)
-                total_acc = torch.zeros(1, device=self.device)
-
-                TP = torch.zeros(1, device=self.device)
-                FP = torch.zeros(1, device=self.device)
-                TN = torch.zeros(1, device=self.device)
-                FN = torch.zeros(1, device=self.device)
+                # total_acc = torch.zeros(1, device=self.device)
+                #
+                # TP = torch.zeros(1, device=self.device)
+                # FP = torch.zeros(1, device=self.device)
+                # TN = torch.zeros(1, device=self.device)
+                # FN = torch.zeros(1, device=self.device)
 
                 for i, batch in enumerate(tqdm(self.train_loader)):
                     bx0 = batch[0].to(self.device)
@@ -178,31 +176,31 @@ class HW2VerificationTriple(Learning):
 
                     loss = self.criterion(y0, y_pos, y_neg)
                     total_loss += loss
-                    y_prime_pos = self.predict(y0, y_pos)
-                    y_prime_neg = self.predict(y0, y_neg)
+                    # y_prime_pos = self.predict(y0, y_pos)
+                    # y_prime_neg = self.predict(y0, y_neg)
 
-                    total_acc += (torch.count_nonzero(y_prime_pos) + torch.count_nonzero(
-                            torch.logical_not(y_prime_neg)))
-
-                    TP += torch.count_nonzero(y_prime_pos)
-                    TN += torch.count_nonzero(torch.logical_not(y_prime_neg))
-
-                    FP += torch.count_nonzero(y_prime_neg)
-                    FN += torch.count_nonzero(torch.logical_not(y_prime_pos))
+                    # total_acc += (torch.count_nonzero(y_prime_pos) + torch.count_nonzero(
+                    #         torch.logical_not(y_prime_neg)))
+                    #
+                    # TP += torch.count_nonzero(y_prime_pos)
+                    # TN += torch.count_nonzero(torch.logical_not(y_prime_neg))
+                    #
+                    # FP += torch.count_nonzero(y_prime_neg)
+                    # FN += torch.count_nonzero(torch.logical_not(y_prime_pos))
 
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
 
                 loss_item = total_loss.item() / (i + 1)
-                accuracy_item = total_acc.item() / (i + 1) / self.params.B / 2
+                # accuracy_item = total_acc.item() / (i + 1) / self.params.B / 2
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
-                self.writer.add_scalar('Accuracy/Train', accuracy_item, epoch)
-                self.writer.add_scalar('Precision/Train', (TP / (TP + FP)).item(), epoch)
-                self.writer.add_scalar('Recall/Train', (TP / (TP + FN).item()), epoch)
-                self.writer.add_scalar('TPR/Train', (TP / (TP + FN)).item(), epoch)
-                self.writer.add_scalar('FPR/Train', (FP / (TN + FP)).item(), epoch)
-                self.writer.add_scalar('F1/Train', (2 * TP / (2 * TP + FN + FP)).item(), epoch)
+                # self.writer.add_scalar('Accuracy/Train', accuracy_item, epoch)
+                # self.writer.add_scalar('Precision/Train', (TP / (TP + FP)).item(), epoch)
+                # self.writer.add_scalar('Recall/Train', (TP / (TP + FN).item()), epoch)
+                # self.writer.add_scalar('TPR/Train', (TP / (TP + FN)).item(), epoch)
+                # self.writer.add_scalar('FPR/Train', (FP / (TN + FP)).item(), epoch)
+                # self.writer.add_scalar('F1/Train', (2 * TP / (2 * TP + FN + FP)).item(), epoch)
 
                 self._validate(epoch)
                 self.model.train()
@@ -219,12 +217,12 @@ class HW2VerificationTriple(Learning):
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
-                total_acc = torch.zeros(1, device=self.device)
-
-                TP = torch.zeros(1, device=self.device)
-                FP = torch.zeros(1, device=self.device)
-                TN = torch.zeros(1, device=self.device)
-                FN = torch.zeros(1, device=self.device)
+                # total_acc = torch.zeros(1, device=self.device)
+                #
+                # TP = torch.zeros(1, device=self.device)
+                # FP = torch.zeros(1, device=self.device)
+                # TN = torch.zeros(1, device=self.device)
+                # FN = torch.zeros(1, device=self.device)
 
                 for i, batch in enumerate(tqdm(self.valid_loader)):
                     bx1 = batch[0].to(self.device)
@@ -234,30 +232,31 @@ class HW2VerificationTriple(Learning):
                     y1 = self.model(bx1)
                     y2 = self.model(bx2)
 
-                    y_prime = self.predict(y1, y2)
+                    # y_prime = self.predict(y1, y2)
 
                     score = self.score(y1, y2)
                     valid_scores[i * self.params.B:i * self.params.B + by.shape[
                         0]] = score.cpu().detach().numpy()
 
-                    total_acc += torch.count_nonzero(torch.eq(y_prime, by))
-
-                    TP += torch.count_nonzero(torch.logical_and(y_prime, by))
-                    TN += torch.count_nonzero(torch.logical_and(
-                            torch.logical_not(y_prime), torch.logical_not(by)))
-
-                    FP += torch.count_nonzero(torch.logical_and(
-                            y_prime, torch.logical_not(by)))
-                    FN += torch.count_nonzero(torch.logical_and(
-                            torch.logical_not(y_prime), by))
-
-                accuracy_item = total_acc.item() / (i + 1) / self.params.B
-                self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
-                self.writer.add_scalar('Precision/Validation', (TP / (TP + FP)).item(), epoch)
-                self.writer.add_scalar('Recall/Validation', (TP / (TP + FN).item()), epoch)
-                self.writer.add_scalar('TPR/Validation', (TP / (TP + FN)).item(), epoch)
-                self.writer.add_scalar('FPR/Validation', (FP / (TN + FP)).item(), epoch)
-                self.writer.add_scalar('F1/Validation', (2 * TP / (2 * TP + FN + FP)).item(), epoch)
+                #     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
+                #
+                #     TP += torch.count_nonzero(torch.logical_and(y_prime, by))
+                #     TN += torch.count_nonzero(torch.logical_and(
+                #             torch.logical_not(y_prime), torch.logical_not(by)))
+                #
+                #     FP += torch.count_nonzero(torch.logical_and(
+                #             y_prime, torch.logical_not(by)))
+                #     FN += torch.count_nonzero(torch.logical_and(
+                #             torch.logical_not(y_prime), by))
+                #
+                # accuracy_item = total_acc.item() / (i + 1) / self.params.B
+                # self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
+                # self.writer.add_scalar('Precision/Validation', (TP / (TP + FP)).item(), epoch)
+                # self.writer.add_scalar('Recall/Validation', (TP / (TP + FN).item()), epoch)
+                # self.writer.add_scalar('TPR/Validation', (TP / (TP + FN)).item(), epoch)
+                # self.writer.add_scalar('FPR/Validation', (FP / (TN + FP)).item(), epoch)
+                # self.writer.add_scalar('F1/Validation', (2 * TP / (2 * TP + FN + FP)).item(),
+                # epoch)
                 self.writer.add_scalar('Score/Validation',
                                        roc_auc_score(self.gt_labels, valid_scores), epoch)
 
@@ -299,7 +298,7 @@ def main():
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='AdaptiveTripletMarginLoss')
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
-    parser.add_argument('--loss_lr', default=1e-3, type=float)
+    parser.add_argument('--margin', default=1.0, type=float)
     parser.add_argument('--perspective', action='store_true')
 
     args = parser.parse_args()
@@ -307,7 +306,7 @@ def main():
     params = ParamsHW2Verification(B=args.batch, lr=args.lr,
                                    device='cuda:' + args.gpu_id, flip=args.flip,
                                    normalize=args.normalize, erase=args.erase,
-                                   resize=args.resize, loss_lr=args.loss_lr,
+                                   resize=args.resize, margin=args.margin,
                                    perspective=args.perspective)
     model = eval(args.model + '(params)')
     learner = HW2VerificationTriple(params, model, eval(args.loss))

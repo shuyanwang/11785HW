@@ -90,7 +90,7 @@ class HW2TrainBSet(torch.utils.data.Dataset):
         self.transform = self.params.transforms_train
 
     def __len__(self):
-        return 20000
+        return 4000
 
     def __getitem__(self, index):
         """
@@ -99,12 +99,11 @@ class HW2TrainBSet(torch.utils.data.Dataset):
         :return: 2,(B,...)
         """
         labels = np.random.randint(low=0, high=4000, size=self.params.B)
-        # labels[0] = self.lookup[index]
+        labels[0] = index
 
         names = [[self.classes[label][np.random.randint(0, len(self.classes[label]))],
                   self.classes[label][np.random.randint(0, len(self.classes[label]))]]
                  for label in labels]
-        # names[0][0] = self.classes[labels[0]][index - self.offset[labels[0]]]
 
         items = torch.stack([self.transform(
                 pil_loader(os.path.join(self.params.data_dir, str(labels[i]), names[i][0])))
@@ -130,7 +129,7 @@ class HW2VerificationB(Learning):
     def _load_train(self):
         train_set = HW2TrainBSet(self.params)
         self.train_loader = torch.utils.data.DataLoader(train_set,
-                                                        batch_size=None, shuffle=True,
+                                                        batch_size=1, shuffle=True,
                                                         pin_memory=True, num_workers=num_workers,
                                                         batch_sampler=None)
 
@@ -150,7 +149,7 @@ class HW2VerificationB(Learning):
                                                        pin_memory=True, num_workers=num_workers)
 
     def train(self, checkpoint_interval=5):
-        self._validate(self.init_epoch)
+        # self._validate(self.init_epoch)
 
         if self.train_loader is None:
             self._load_train()
@@ -162,8 +161,8 @@ class HW2VerificationB(Learning):
                 total_loss = torch.zeros(1, device=self.device)
 
                 for i, batch in enumerate(tqdm(self.train_loader)):
-                    bx0 = batch[0].to(self.device)
-                    bx1 = batch[1].to(self.device)
+                    bx0 = batch[0][0].to(self.device)
+                    bx1 = batch[1][0].to(self.device)
 
                     y0 = self.model(bx0)
                     y1 = self.model(bx1)
