@@ -1,6 +1,7 @@
 import torch
-# from torch import nn
+from torch import nn
 from utils.base import PairLoss, TripletLoss
+from torch.nn import functional
 
 
 #
@@ -163,30 +164,22 @@ class AdaptiveCosineLoss(PairLoss):
         return torch.where(torch.ge(torch.cosine_similarity(y1, y2), threshold), 1, 0)
 
 
-# class CosineLoss(PairLoss):
-#     def __init__(self, m=1.0):
-#         super().__init__()
-#         self.m = m
-#
-#     def forward(self, x1, x2, y):
-#         """
-#         Hinge embedding loss for 0-1, 2 class
-#         :param x1:
-#         :param x2:
-#         :param y: 0 - 1
-#         :return:
-#         """
-#         similarity = torch.cosine_similarity(x1, x2)
-#         return torch.mean(
-#                 torch.clamp(similarity - self.m, min=0.0) * (1 - y) + (1 - similarity) * y)
-#
-#     @staticmethod
-#     def predict(y1, y2, threshold):
-#         """
-#         Prediction
-#         :param y1: (N,*)
-#         :param y2:
-#         :param threshold: float
-#         :return: (N)
-#         """
-#         return torch.where(torch.ge(torch.cosine_similarity(y1, y2), threshold), 1, 0)
+class BWayLoss(nn.Module):
+    def score(self, y1, y2):
+        dist = torch.pairwise_distance(y1, y2)
+        return 1 / (1 + dist)
+
+    def __init__(self):
+        super(BWayLoss, self).__init__()
+
+    def forward(self, y1, y2):
+        """
+
+        :param y1: B,F
+        :param y2: B,F
+        :return:
+        """
+        dot = torch.einsum('if,jf->ij', y1, y2)
+        # dot[i,j] is the dot product of y1_i and y2_j
+
+        return -torch.sum(functional.log_softmax(dot, dim=1))
