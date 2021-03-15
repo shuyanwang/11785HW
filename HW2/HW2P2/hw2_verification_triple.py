@@ -8,7 +8,7 @@ from tqdm import tqdm
 import torchvision
 from torchvision.datasets.folder import pil_loader
 
-from model_efficientnet import *
+from models import *
 from losses import *
 
 import argparse
@@ -17,7 +17,7 @@ import numpy as np
 from hw2_verification_pair import HW2ValidPairSet
 from sklearn.metrics import roc_auc_score
 
-num_workers = 6
+num_workers = 4
 
 
 class ParamsHW2Verification(Params):

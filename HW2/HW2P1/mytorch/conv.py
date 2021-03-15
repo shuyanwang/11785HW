@@ -247,3 +247,9 @@ class Flatten:
             dx (np.array): (batch size, in channel, in width)
         """
         return np.reshape(delta, (self.b, self.c, self.w))
+
+
+if __name__ == '__main__':
+    X = np.asarray([[[[1, 0, 1, 0, 1], [0, 1, 0, 1, 0]]]])
+
+    t = 1

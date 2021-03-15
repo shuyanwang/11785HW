@@ -81,3 +81,12 @@ class EfficientNetB0E(Model):
 
     def forward(self, x: torch.Tensor):
         return torch.flatten(self.net.extract_features(x), start_dim=1)
+
+
+class PretrainedB0_512(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = EfficientNet.from_pretrained('efficientnet-b0', num_classes=512)
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)

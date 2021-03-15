@@ -113,6 +113,9 @@ class ResNet(nn.Module):
         self.cin = 64
         # The number of channels feeding into the next residual layer
         # subject to update in residual layers: the proceeding layer takes this value
+        cout_list = [64, 128, 256, 512]
+        residual_layers = []
+
         residual_layers = [self.residual_layer(block, 64, layers[0], 1),
                            self.residual_layer(block, 128, layers[1], 2),
                            self.residual_layer(block, 256, layers[2], 2),
@@ -138,6 +141,9 @@ class ResNet(nn.Module):
                 nn.init.constant_(module.bias, 0)
 
     def residual_layer(self, block, cout, num_blocks, stride):
+
+        if num_blocks == 0:
+            return nn.Identity()
 
         #### For BottleNeckBlock blocks, we need to down-sample
         # because we need cin to match cout for addition
@@ -244,6 +250,24 @@ class ResNet10E(Model):
     def __init__(self, params: ParamsHW2Classification):
         super().__init__(params)
         self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=True)
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
+
+
+class ResNet10_256(Model):
+    def __init__(self, params):
+        super(ResNet10_256, self).__init__(params)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=True, num_classes=256)
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
+
+
+class ResNet8_256(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=True, num_classes=256)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
