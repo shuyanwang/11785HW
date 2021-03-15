@@ -271,3 +271,14 @@ class ResNet8_256(Model):
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+
+
+class ResNet10C(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=True, num_classes=params.feature_dims)
+        self.fc = nn.Linear(params.feature_dims, params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        features = self.net(x)
+        return features, self.fc(torch.relu(features))

@@ -4,6 +4,59 @@ from utils.base import PairLoss, TripletLoss
 from torch.nn import functional
 
 
+class CenterLoss(nn.Module):
+    """
+    Args:
+        num_classes (int): number of classes.
+        feat_dim (int): feature dimension.
+    """
+
+    def __init__(self, params):
+        super(CenterLoss, self).__init__()
+        self.num_classes = params.output_channels
+        self.feat_dim = params.feature_dims
+        self.classes = torch.arange(self.num_classes).long().to(params.device)
+
+        self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
+
+    def forward(self, x, labels):
+        """
+        Args:
+            x: feature matrix with shape (batch_size, feat_dim).
+            labels: ground truth labels with shape (batch_size).
+        """
+        batch_size = x.size(0)
+        distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
+                  torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes,
+                                                                             batch_size).t()
+        distmat.addmm_(x, self.centers.t(), 1, -2)
+
+        labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
+        mask = labels.eq(self.classes.expand(batch_size, self.num_classes))
+
+        dist = []
+        for i in range(batch_size):
+            value = distmat[i][mask[i]]
+            value = value.clamp(min=1e-12, max=1e+12)  # for numerical stability
+            dist.append(value)
+        dist = torch.cat(dist)
+        loss = dist.mean()
+
+        return loss
+
+
+class CrossEntropyCenterLoss(nn.Module):
+
+    def __init__(self, params, lambDA=0.1):
+        super(CrossEntropyCenterLoss, self).__init__()
+        self.lambDA = lambDA
+        self.center = CenterLoss(params)
+        self.CE = nn.CrossEntropyLoss()
+
+    def forward(self, feature, y, label: torch.Tensor) -> torch.Tensor:
+        return self.CE(y, label) + self.lambDA * self.center(feature, label)
+
+
 #
 # class ContrastiveLoss(PairLoss):
 #     def __init__(self, m=1.0):

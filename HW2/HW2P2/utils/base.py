@@ -153,9 +153,9 @@ class Learning(ABC):
                     bx = batch[0].to(self.device)
                     by = batch[1].to(self.device)
 
-                    prediction = self.model(bx)
+                    features, prediction = self.model(bx)
 
-                    loss = self.criterion(prediction, by)
+                    loss = self.criterion(features, prediction, by)
                     total_loss += loss
                     y_prime = torch.argmax(prediction, dim=1)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))
@@ -190,8 +190,8 @@ class Learning(ABC):
                     bx = batch[0].to(self.device)
                     by = batch[1].to(self.device)
 
-                    prediction = self.model(bx)
-                    loss = self.criterion(prediction, by)
+                    features, prediction = self.model(bx)
+                    loss = self.criterion(features, prediction, by)
                     total_loss += loss
                     y_prime = torch.argmax(prediction, dim=1)
                     total_acc += torch.count_nonzero(torch.eq(y_prime, by))

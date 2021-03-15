@@ -90,3 +90,15 @@ class PretrainedB0_512(Model):
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+
+
+class EfficientNetB0C(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = EfficientNet.from_name('efficientnet-b0', num_classes=params.feature_dims,
+                                          image_size=(params.size, params.size))
+        self.fc = nn.Linear(params.feature_dims, params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        features = self.net(x)
+        return features, self.fc(torch.relu(features))
