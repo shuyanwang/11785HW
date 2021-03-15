@@ -76,21 +76,21 @@ class HW2TrainBSet(torch.utils.data.Dataset):
         self.params: ParamsHW2Verification = params
         self.classes = dict()
         self.lookup = []  # label @ id
-        self.offset = [0 for _ in range(params.output_channels)]
+        self.offset = [0 for _ in range(4000)]
         # num of images before current label
-        for label in range(params.output_channels):
+        for label in range(4000):
             self.classes[label] = []
             for img_name in os.listdir(os.path.join(self.params.data_dir, str(label))):
                 self.lookup.append(label)
                 self.classes[label].append(img_name)
 
-        for label in range(1, params.output_channels):
+        for label in range(1, 4000):
             self.offset[label] = self.offset[label - 1] + len(self.classes[label - 1])
 
         self.transform = self.params.transforms_train
 
     def __len__(self):
-        return len(self.lookup)
+        return 20000
 
     def __getitem__(self, index):
         """
@@ -98,13 +98,13 @@ class HW2TrainBSet(torch.utils.data.Dataset):
         :param index:
         :return: 2,(B,...)
         """
-        labels = np.random.randint(low=0, high=self.params.output_channels, size=self.params.B)
-        labels[0] = self.lookup[index]
+        labels = np.random.randint(low=0, high=4000, size=self.params.B)
+        # labels[0] = self.lookup[index]
 
         names = [[self.classes[label][np.random.randint(0, len(self.classes[label]))],
                   self.classes[label][np.random.randint(0, len(self.classes[label]))]]
                  for label in labels]
-        names[0][0] = self.classes[labels[0]][index - self.offset[labels[0]]]
+        # names[0][0] = self.classes[labels[0]][index - self.offset[labels[0]]]
 
         items = torch.stack([self.transform(
                 pil_loader(os.path.join(self.params.data_dir, str(labels[i]), names[i][0])))
@@ -150,7 +150,7 @@ class HW2VerificationB(Learning):
                                                        pin_memory=True, num_workers=num_workers)
 
     def train(self, checkpoint_interval=5):
-        # self._validate(self.init_epoch)
+        self._validate(self.init_epoch)
 
         if self.train_loader is None:
             self._load_train()
@@ -247,7 +247,6 @@ def main():
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='BWayLoss')
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
-    parser.add_argument('--loss_lr', default=1e-3, type=float)
     parser.add_argument('--perspective', action='store_true')
 
     args = parser.parse_args()
