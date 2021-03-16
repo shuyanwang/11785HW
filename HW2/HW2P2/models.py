@@ -258,7 +258,7 @@ class ResNet10E(Model):
 class ResNet10_256(Model):
     def __init__(self, params):
         super(ResNet10_256, self).__init__(params)
-        self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=True, num_classes=256)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=False, num_classes=256)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -267,7 +267,7 @@ class ResNet10_256(Model):
 class ResNet8_256(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=True, num_classes=256)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=False, num_classes=256)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)

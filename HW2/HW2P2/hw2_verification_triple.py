@@ -33,7 +33,7 @@ class ParamsHW2Verification(Params):
 
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=2,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
-        self.str = 'verify_b=' + str(self.B) + 'margin=' + str(margin) + '_'
+        self.str = 'verify_b=' + str(self.B) + 'margin=' + str(margin) + 'lr=' + str(lr) + '_'
 
         transforms_train = []
         transforms_test = []
