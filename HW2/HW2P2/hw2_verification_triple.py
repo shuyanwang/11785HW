@@ -118,7 +118,7 @@ class HW2VerificationTriple(Learning):
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
 
         self.gt_labels: Optional[np.ndarray] = None
-        self.criterion = loss(m=params.margin).cuda(params.device)
+        self.criterion = loss(m=params.margin).cuda(self.device)
         print(str(self))
 
     def predict(self, y1, y2):

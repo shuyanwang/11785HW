@@ -121,9 +121,11 @@ class Learning(ABC):
 
     def load_model(self, epoch=20, name=None):
         if name is None:
-            loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
+            loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar',
+                                map_location=self.device)
         else:
-            loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar')
+            loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar',
+                                map_location=self.device)
         self.init_epoch = loaded['epoch']
         self.model.load_state_dict(loaded['model_state_dict'])
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])

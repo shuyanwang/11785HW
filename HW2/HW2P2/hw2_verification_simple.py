@@ -1,4 +1,6 @@
 import os
+from typing import Union
+
 import torch.utils.data
 
 from utils.base import Params, Learning
@@ -7,7 +9,7 @@ import torchvision
 from torchvision.datasets.folder import pil_loader
 from sklearn.metrics import roc_auc_score
 
-from models import *
+from model_efficientnet import *
 from losses import *
 
 import argparse
@@ -19,16 +21,15 @@ num_workers = 6
 
 
 class ParamsHW2VerificationS(Params):
-    def __init__(self, B, lr, device, normalize, resize, max_epoch=201, margin=10,
+    def __init__(self, B, lr, device, normalize, resize, crop, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
                           '/train_data'):
 
         self.size = 64 if resize <= 0 else resize
-        self.margin = margin
 
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=4000,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
-        self.str = 'verify_b=' + str(self.B) + '_'
+        self.str = 'verify_simple_'
 
         transforms_test = []
 
@@ -36,14 +37,16 @@ class ParamsHW2VerificationS(Params):
             self.str = self.str + 'r' + str(self.size)
             transforms_test.append(torchvision.transforms.Resize(self.size))
 
+        if crop > 0:
+            self.str = self.str + 'c' + str(crop)
+            transforms_test.append(torchvision.transforms.CenterCrop(crop))
+
         transforms_test.append(torchvision.transforms.ToTensor())
 
         if normalize:
             self.str = self.str + 'n'
             transforms_test.append(
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
-
-        self.str = self.str + '_'
 
         self.transforms_test = torchvision.transforms.Compose(transforms_test)
 
@@ -54,13 +57,18 @@ class ParamsHW2VerificationS(Params):
 class HW2VerificationSimple(Learning):
     def __init__(self, params: ParamsHW2VerificationS, model: Model, loss):
         super().__init__(params, model, torch.optim.Adam, None,
-                         string='simple_' + model.__class__.__name__ + '_' + str(params))
-        self.criterion = loss(m=params.margin).cuda(params.device)
+                         string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
+        self.criterion: Union[TripletLoss, PairLoss] = loss().cuda(params.device)
         print(str(self))
 
-    @staticmethod
-    def score(self, y1, y2):
+    def features(self, x):
+        if 'EfficientNet' in self.model.__class__.__name__:
+            return torch.flatten(self.model.net.extract_features(x), start_dim=1)
+
         return
+
+    def score(self, y1, y2):
+        return self.criterion.score(y1, y2)
 
     def _load_train(self):
         pass
@@ -95,8 +103,8 @@ class HW2VerificationSimple(Learning):
                     bx2 = batch[1].to(self.device)
                     by = batch[2].to(self.device)
 
-                    y1 = self.model(bx1)
-                    y2 = self.model(bx2)
+                    y1 = self.features(bx1)
+                    y2 = self.features(bx2)
 
                     score = self.score(y1, y2)
                     valid_scores[i * self.params.B:i * self.params.B + by.shape[
@@ -118,8 +126,8 @@ class HW2VerificationSimple(Learning):
                         x1 = item[0].to(self.device)
                         x2 = item[1].to(self.device)
 
-                        y1 = self.model(x1)
-                        y2 = self.model(x2)
+                        y1 = self.features(x1)
+                        y2 = self.features(x2)
 
                         f.write(self.test_set.items[i][3] + ' ' +
                                 self.test_set.items[i][4] + ',' +
@@ -127,9 +135,11 @@ class HW2VerificationSimple(Learning):
 
     def load_model(self, epoch=20, name=None):
         if name is None:
-            loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
+            loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar',
+                                map_location=self.device)
         else:
-            loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar')
+            loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar',
+                                map_location=self.device)
         self.init_epoch = loaded['epoch']
         model_states = loaded['model_state_dict']
         # del model_states['net.linear.weight']
@@ -149,14 +159,14 @@ def main():
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
-    parser.add_argument('--margin', default=10, type=int)
     parser.add_argument('--loss', default='SwapTripletMarginLoss')
+    parser.add_argument('--crop', default=380, type=int)
 
     args = parser.parse_args()
 
     params = ParamsHW2VerificationS(B=args.batch, lr=args.lr,
                                     device='cuda:' + args.gpu_id, normalize=args.normalize,
-                                    resize=args.resize, margin=args.margin)
+                                    resize=args.resize, crop=args.crop)
     model = eval(args.model + '(params)')
     learner = HW2VerificationSimple(params, model, eval(args.loss))
 
@@ -168,7 +178,7 @@ def main():
 
     if args.test:
         learner._validate(learner.init_epoch)
-        learner.test()
+        # learner.test()
 
 
 if __name__ == '__main__':
