@@ -100,5 +100,5 @@ class EfficientNetB0C(Model):
         self.fc = nn.Linear(params.feature_dims, params.output_channels)
 
     def forward(self, x: torch.Tensor):
-        features = self.net(x)
-        return features, self.fc(torch.relu(features))
+        features = torch.flatten(self.net.extract_features(x), start_dim=1)
+        return features, self.fc(features)

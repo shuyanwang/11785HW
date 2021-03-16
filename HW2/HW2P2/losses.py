@@ -49,9 +49,9 @@ class CenterLoss(nn.Module):
 
 class CrossEntropyCenterLoss(nn.Module):
 
-    def __init__(self, params, lambDA=0.1):
+    def __init__(self, params):
         super(CrossEntropyCenterLoss, self).__init__()
-        self.lambDA = lambDA
+        self.lambDA = params.lambDA
         self.center = CenterLoss(params)
         self.CE = nn.CrossEntropyLoss()
 
