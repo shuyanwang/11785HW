@@ -5,6 +5,7 @@ from utils.base import Params, Learning
 from tqdm import tqdm
 import torchvision
 from torchvision.datasets.folder import pil_loader
+from sklearn.metrics import roc_auc_score
 
 from models import *
 from losses import *
@@ -17,55 +18,33 @@ from hw2_verification_pair import HW2ValidPairSet
 num_workers = 6
 
 
-class ParamsHW2Verification(Params):
-    def __init__(self, B, lr, device, flip, normalize,
-                 erase, resize, positive, perspective, max_epoch=201,
+class ParamsHW2VerificationS(Params):
+    def __init__(self, B, lr, device, normalize, resize, max_epoch=201, margin=10,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
-                          '/train_data', loss_lr=1e-2):
-
-        self.loss_lr = loss_lr
+                          '/train_data'):
 
         self.size = 64 if resize <= 0 else resize
+        self.margin = margin
 
-        super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=2,
+        super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=4000,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
-        self.pos_p = positive
-        self.str = 'verify_b=' + str(self.B) + 'p=' + str(self.pos_p) + 'loss_lr=' + str(
-                self.loss_lr) + '_'
+        self.str = 'verify_b=' + str(self.B) + '_'
 
-        transforms_train = []
         transforms_test = []
 
         if self.size != 64:
             self.str = self.str + 'r' + str(self.size)
-            transforms_train.append(torchvision.transforms.Resize(self.size))
             transforms_test.append(torchvision.transforms.Resize(self.size))
 
-        if flip:
-            transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
-            self.str = self.str + 'f'
-
-        if perspective:
-            transforms_train.append(torchvision.transforms.RandomPerspective())
-            self.str = self.str + 'p'
-
-        transforms_train.append(torchvision.transforms.ToTensor())
         transforms_test.append(torchvision.transforms.ToTensor())
 
         if normalize:
             self.str = self.str + 'n'
             transforms_test.append(
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
-            transforms_train.append(
-                    torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
-
-        if erase:
-            transforms_train.append(torchvision.transforms.RandomErasing())
-            self.str = self.str + 'e'
 
         self.str = self.str + '_'
 
-        self.transforms_train = torchvision.transforms.Compose(transforms_train)
         self.transforms_test = torchvision.transforms.Compose(transforms_test)
 
     def __str__(self):
@@ -73,21 +52,22 @@ class ParamsHW2Verification(Params):
 
 
 class HW2VerificationSimple(Learning):
-    def __init__(self, params: ParamsHW2Verification, model: Model):
-        super().__init__(params, model, torch.optim.Adam, torch.nn.CrossEntropyLoss,
+    def __init__(self, params: ParamsHW2VerificationS, model: Model, loss):
+        super().__init__(params, model, torch.optim.Adam, None,
                          string='simple_' + model.__class__.__name__ + '_' + str(params))
+        self.criterion = loss(m=params.margin).cuda(params.device)
         print(str(self))
 
-    def predict(self, y1, y2):
-        y1 = torch.argmax(y1, dim=1)
-        y2 = torch.argmax(y2, dim=1)
-        return torch.eq(y1, y2).int()
+    @staticmethod
+    def score(self, y1, y2):
+        return
 
     def _load_train(self):
         pass
 
     def _load_valid(self):
         valid_set = HW2ValidPairSet(validation=True, transform=self.params.transforms_test)
+        self.gt_labels = valid_set.gt_array
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
@@ -105,9 +85,10 @@ class HW2VerificationSimple(Learning):
             self._load_valid()
 
         with torch.cuda.device(self.device):
+
+            valid_scores = np.zeros(self.gt_labels.shape)
             with torch.no_grad():
                 self.model.eval()
-                total_acc = torch.zeros(1, device=self.device)
 
                 for i, batch in enumerate(tqdm(self.valid_loader)):
                     bx1 = batch[0].to(self.device)
@@ -117,11 +98,12 @@ class HW2VerificationSimple(Learning):
                     y1 = self.model(bx1)
                     y2 = self.model(bx2)
 
-                    y_prime = self.predict(y1, y2)
-                    total_acc += torch.count_nonzero(torch.eq(y_prime, by))
+                    score = self.score(y1, y2)
+                    valid_scores[i * self.params.B:i * self.params.B + by.shape[
+                        0]] = score.cpu().detach().numpy()
 
-                accuracy_item = total_acc.item() / (i + 1) / self.params.B
-                self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
+                self.writer.add_scalar('Score/Validation',
+                                       roc_auc_score(self.gt_labels, valid_scores), epoch)
 
     def test(self):
         if self.test_loader is None:
@@ -141,7 +123,7 @@ class HW2VerificationSimple(Learning):
 
                         f.write(self.test_set.items[i][3] + ' ' +
                                 self.test_set.items[i][4] + ',' +
-                                str(self.predict(y1, y2).item()) + '\n')
+                                str(self.score(y1, y2).item()) + '\n')
 
     def load_model(self, epoch=20, name=None):
         if name is None:
@@ -159,31 +141,24 @@ class HW2VerificationSimple(Learning):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch', help='Batch Size', default=128, type=int)
-    parser.add_argument('--dropout', default=0.0, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
     parser.add_argument('--model', default='ResNet101', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--load', default='', help='Load Name')
-    parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
-    parser.add_argument('--flip', action='store_true')
     parser.add_argument('--normalize', action='store_true')
-    parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
-    parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
-    parser.add_argument('--pos', default='0.5', type=float,
-                        help='Probability of choosing same class, otherwise randomly chosen')
-    parser.add_argument('--loss_lr', default=1e-2, type=float)
+    parser.add_argument('--margin', default=10, type=int)
+    parser.add_argument('--loss', default='SwapTripletMarginLoss')
 
     args = parser.parse_args()
 
-    params = ParamsHW2Verification(B=args.batch, lr=args.lr,
-                                   device='cuda:' + args.gpu_id, flip=args.flip,
-                                   normalize=args.normalize, erase=args.erase,
-                                   resize=args.resize, positive=args.pos)
+    params = ParamsHW2VerificationS(B=args.batch, lr=args.lr,
+                                    device='cuda:' + args.gpu_id, normalize=args.normalize,
+                                    resize=args.resize, margin=args.margin)
     model = eval(args.model + '(params)')
-    learner = HW2VerificationSimple(params, model)
+    learner = HW2VerificationSimple(params, model, eval(args.loss))
 
     if args.epoch >= 0:
         if args.load == '':

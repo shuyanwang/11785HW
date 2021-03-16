@@ -9,6 +9,7 @@ import torchvision
 from torchvision.datasets.folder import pil_loader
 
 from models import *
+from model_facenet import *
 from losses import *
 
 import argparse
@@ -296,7 +297,7 @@ def main():
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
-    parser.add_argument('--loss', default='AdaptiveTripletMarginLoss')
+    parser.add_argument('--loss', default='SwapTripletMarginLoss')
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
     parser.add_argument('--margin', default=1.0, type=float)
     parser.add_argument('--perspective', action='store_true')
