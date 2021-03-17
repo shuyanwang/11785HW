@@ -9,7 +9,7 @@ import torchvision
 from torchvision.datasets.folder import pil_loader
 
 from models import *
-from model_facenet import *
+from model_efficientnet import *
 from losses import *
 
 import argparse
