@@ -3,6 +3,7 @@ import torch.nn as nn
 from utils.base import Model
 from hw2_classification import ParamsHW2Classification
 from typing import Union, Type
+from torch.nn.functional import normalize
 
 
 class BasicBlock(nn.Module):
@@ -169,7 +170,7 @@ class ResNet(nn.Module):
         x = torch.flatten(self.pool2(x), 1)
 
         if self.embedding:
-            return x
+            return normalize(x)
 
         return self.linear(x)
 
@@ -273,13 +274,13 @@ class ResNet10_256(Model):
         return self.net(x)
 
 
-class ResNet8_256(Model):
-    def __init__(self, params):
-        super().__init__(params)
-        self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=False, num_classes=256)
-
-    def forward(self, x: torch.Tensor):
-        return self.net(x)
+# class ResNet8_256(Model):
+#     def __init__(self, params):
+#         super().__init__(params)
+#         self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=False, num_classes=256)
+#
+#     def forward(self, x: torch.Tensor):
+#         return self.net(x)
 
 
 class ResNet10C(Model):

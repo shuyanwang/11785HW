@@ -3,6 +3,7 @@ from typing import Union
 
 import torch.utils.data
 
+from models import ResNet, BasicBlock
 from utils.base import Params, Learning
 from tqdm import tqdm
 import torchvision
@@ -11,7 +12,7 @@ from sklearn.metrics import roc_auc_score
 
 from model_efficientnet import *
 from losses import *
-from losses_arcface import AngularPenaltySMLoss
+from losses_arcface import ArcFace
 
 import argparse
 import numpy as np
@@ -21,34 +22,47 @@ from hw2_verification_pair import HW2ValidPairSet
 num_workers = 4
 
 
-class ParamsHW2VerificationS(Params):
-    def __init__(self, B, lr, device, normalize, resize, crop, max_epoch=201,
-                 data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'
-                          '/train_data'):
-        self.feature_dims = 512
+class ParamsHW2VerificationF(Params):
+    def __init__(self, B, lr, device, normalize, resize, max_epoch=201,
+                 data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'):
+        self.feature_dims = 3
         self.size = 64 if resize <= 0 else resize
 
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, output_channels=4000,
                          data_dir=data_dir, device=device, input_dims=(3, self.size, self.size))
-        self.str = 'verify_simple_'
+        self.str = 'verify_Arc_' + 'b=' + str(B)
 
+        transforms_train = []
         transforms_test = []
 
         if self.size != 64:
             self.str = self.str + 'r' + str(self.size)
+            transforms_train.append(torchvision.transforms.Resize(self.size))
             transforms_test.append(torchvision.transforms.Resize(self.size))
 
-        if crop > 0:
-            self.str = self.str + 'c' + str(crop)
-            transforms_test.append(torchvision.transforms.CenterCrop(crop))
+        # if flip:
+        #     transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
+        #     self.str = self.str + 'f'
+        #
+        # if perspective:
+        #     transforms_train.append(torchvision.transforms.RandomPerspective())
+        #     self.str = self.str + 'p'
 
+        transforms_train.append(torchvision.transforms.ToTensor())
         transforms_test.append(torchvision.transforms.ToTensor())
 
         if normalize:
             self.str = self.str + 'n'
             transforms_test.append(
                     torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
+            transforms_train.append(
+                    torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
 
+        # if erase:
+        #     transforms_train.append(torchvision.transforms.RandomErasing())
+        #     self.str = self.str + 'e'
+
+        self.transforms_train = torchvision.transforms.Compose(transforms_train)
         self.transforms_test = torchvision.transforms.Compose(transforms_test)
 
     def __str__(self):
@@ -56,17 +70,11 @@ class ParamsHW2VerificationS(Params):
 
 
 class HW2VerificationSimple(Learning):
-    def __init__(self, params: ParamsHW2VerificationS, model: Model, loss):
+    def __init__(self, params: ParamsHW2VerificationF, model: Model, loss):
         super().__init__(params, model, torch.optim.Adam, None,
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
         self.criterion: Union[TripletLoss, PairLoss, SingleLoss] = loss(params).cuda(params.device)
         print(str(self))
-
-    def features(self, x):
-        if 'EfficientNet' in self.model.__class__.__name__:
-            return torch.flatten(self.model.net.extract_features(x), start_dim=1)
-
-        raise ValueError
 
     def score(self, y1, y2):
         return self.criterion.score(y1, y2)
@@ -110,9 +118,6 @@ class HW2VerificationSimple(Learning):
                     bx2 = batch[1].to(self.device)
                     by = batch[2].to(self.device)
 
-                    # y1 = self.features(bx1)
-                    # y2 = self.features(bx2)
-
                     y1 = self.model(bx1)
                     y2 = self.model(bx2)
 
@@ -136,34 +141,28 @@ class HW2VerificationSimple(Learning):
                         x1 = item[0].to(self.device)
                         x2 = item[1].to(self.device)
 
-                        y1 = self.features(x1)
-                        y2 = self.features(x2)
+                        y1 = self.model(x1)
+                        y2 = self.model(x2)
 
                         f.write(self.test_set.items[i][3] + ' ' +
                                 self.test_set.items[i][4] + ',' +
                                 str(self.score(y1, y2).item()) + '\n')
 
-    def load_model(self, epoch=20, name=None):
-        if name is None:
-            loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar',
-                                map_location=self.device)
-        else:
-            loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar',
-                                map_location=self.device)
-        self.init_epoch = loaded['epoch']
-        model_states = loaded['model_state_dict']
-        # del model_states['net.linear.weight']
-        # del model_states['net.linear.bias']
 
-        self.model.load_state_dict(model_states)
+class ResNet34Arc(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNet(BasicBlock, [3, 4, 6, 3], embedding=False, num_classes=3)
+
+    def forward(self, x):
+        return self.net(x)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=128, type=int)
+    parser.add_argument('--batch', help='Batch Size', default=256, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='ResNet10E', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--test', action='store_true')
@@ -171,14 +170,14 @@ def main():
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--resize', default=224, help='Resize Image', type=int)
     parser.add_argument('--loss', default='ArcFace')
-    parser.add_argument('--crop', default=380, type=int)
+    # parser.add_argument('--crop', default=-1, type=int)
 
     args = parser.parse_args()
 
-    params = ParamsHW2VerificationS(B=args.batch, lr=args.lr,
+    params = ParamsHW2VerificationF(B=args.batch, lr=args.lr,
                                     device='cuda:' + args.gpu_id, normalize=args.normalize,
-                                    resize=args.resize, crop=args.crop)
-    model = eval(args.model + '(params)')
+                                    resize=args.resize)
+    model = ResNet34Arc(params)
     learner = HW2VerificationSimple(params, model, eval(args.loss))
 
     if args.epoch >= 0:

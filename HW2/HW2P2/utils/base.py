@@ -7,6 +7,22 @@ from abc import ABC, abstractmethod
 from tqdm import tqdm
 
 
+class SingleLoss(nn.Module, ABC):
+    @abstractmethod
+    def __init__(self, params):
+        super().__init__()
+
+    @abstractmethod
+    def forward(self, y1: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
+        pass
+
+    def predict(self, y1, *args) -> int:
+        pass
+
+    def score(self, y1, y2):
+        pass
+
+
 class PairLoss(nn.Module, ABC):
     @abstractmethod
     def __init__(self):
