@@ -255,6 +255,15 @@ class ResNet10E(Model):
         return self.net(x)
 
 
+class ResNet8E(Model):
+    def __init__(self, params: ParamsHW2Classification):
+        super().__init__(params)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=True)
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
+
+
 class ResNet10_256(Model):
     def __init__(self, params):
         super(ResNet10_256, self).__init__(params)
