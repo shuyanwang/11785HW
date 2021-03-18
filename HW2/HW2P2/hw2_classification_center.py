@@ -2,12 +2,9 @@ import os
 
 import numpy as np
 import torch.utils.data
-from utils.base import Params, Learning
-from tqdm import tqdm
 import torchvision
 
 from model_efficientnet import *
-from models import *
 from losses import *
 
 from hw2_verification_pair import HW2ValidPairSet
@@ -178,11 +175,6 @@ class HW2ClassificationC(Learning):
         if self.valid_loader is None:
             self._load_valid()
 
-        # try:
-        #     a = self.gt_labels.shape
-        # except:
-        #     self._load_valid()
-
         valid_scores = np.zeros(self.gt_labels.shape)
 
         with torch.cuda.device(self.device):
@@ -195,7 +187,6 @@ class HW2ClassificationC(Learning):
                     by = batch[2].to(self.device)
 
                     features1, prediction1 = self.model(bx1)
-
                     features2, prediction2 = self.model(bx2)
 
                     score = self.score(features1, features2)
@@ -252,5 +243,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-#### Observations: Normalization useless; Flip and Erasing used together IS useful.
