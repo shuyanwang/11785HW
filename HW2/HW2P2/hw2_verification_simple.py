@@ -60,11 +60,18 @@ class HW2VerificationSimple(Learning):
         super().__init__(params, model, torch.optim.Adam, None,
                          string=loss.__name__ + '_' + model.__class__.__name__ + '_' + str(params))
         self.criterion: Union[TripletLoss, PairLoss, SingleLoss] = loss(params).cuda(params.device)
+        self.pool = nn.AdaptiveAvgPool2d(1)
         print(str(self))
 
     def features(self, x):
+        # return self.model(x)
         if 'EfficientNet' in self.model.__class__.__name__:
-            return F.normalize(torch.flatten(self.model.net.extract_features(x), start_dim=1))
+            return torch.flatten(self.pool(self.model.net.extract_features(x)),
+                                 start_dim=1)
+
+        # Both similarity works; also must use avg_pooling -> 0.1 SCORE INCREASE wrt no pooling;
+        # -> some increase wrt max pooling; or out_size != 2
+        # normalize useless at this stage
         raise ValueError
 
     def score(self, y1, y2):

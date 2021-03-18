@@ -147,7 +147,7 @@ class Learning(ABC):
         self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
 
         if 'loss_state_dict' in loaded:
-            self.criterion.load_state_dict(loaded['loss_state_dict'])
+            self.criterion.load_state_dict(loaded['loss_state_dict'], strict=False)
 
     def save_model(self, epoch):
         torch.save({
