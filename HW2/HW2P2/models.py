@@ -174,6 +174,14 @@ class ResNet(nn.Module):
 
         return self.linear(x)
 
+    def features_no_pool(self, x):
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        for residual_layer in self.residual_layers:
+            x = residual_layer(x)
+
+        x = torch.flatten(x, 1)
+        return x
+
 
 class ResNet101(Model):
     def __init__(self, params):
@@ -293,3 +301,12 @@ class ResNet10C(Model):
     def forward(self, x: torch.Tensor):
         features = self.net(x)
         return features, self.fc(torch.relu(features))
+
+
+class ResNet10EN(Model):
+    def __init__(self, params: ParamsHW2Classification):
+        super().__init__(params)
+        self.net = ResNet(BasicBlock, [1, 1, 1, 1], embedding=True)
+
+    def forward(self, x: torch.Tensor):
+        return self.net.features_no_pool(x)
