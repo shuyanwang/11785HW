@@ -192,9 +192,9 @@ class HW2ClassificationC(Learning):
                     score = self.score(features1, features2)
                     valid_scores[i * self.params.B:i * self.params.B + by.shape[
                         0]] = score.cpu().detach().numpy()
-
-                self.writer.add_scalar('Score/Validation',
-                                       roc_auc_score(self.gt_labels, valid_scores), epoch)
+                score_item = roc_auc_score(self.gt_labels, valid_scores)
+                self.writer.add_scalar('Score/Validation', score_item, epoch)
+                print('epoch: ', epoch, 'Validation Score', "%.5f" % score_item)
 
 
 def main():
