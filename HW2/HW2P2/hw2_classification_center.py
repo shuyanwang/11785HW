@@ -104,7 +104,7 @@ class HW2ClassificationC(Learning):
         self.test_set = HW2ValidPairSet(validation=False, transform=self.params.transforms_test)
 
         self.test_loader = torch.utils.data.DataLoader(self.test_set,
-                                                       batch_size=1, shuffle=False,
+                                                       batch_size=self.params.B, shuffle=False,
                                                        pin_memory=True, num_workers=num_workers)
 
     def test(self):
@@ -123,9 +123,10 @@ class HW2ClassificationC(Learning):
                         features1, _ = self.model(x1)
                         features2, _ = self.model(x2)
 
-                        f.write(self.test_set.items[i][3] + ' ' +
-                                self.test_set.items[i][4] + ',' +
-                                str(self.score(features1, features2).item()) + '\n')
+                        for b in range(features1.shape[0]):
+                            f.write(self.test_set.items[i * self.params.B + b][3] + ' ' +
+                                    self.test_set.items[i * self.params.B + b][4] + ',' +
+                                    str(self.score(features1[b], features2[b]).item()) + '\n')
 
     def train(self, checkpoint_interval=5):
         self._validate(self.init_epoch)
