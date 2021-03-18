@@ -101,9 +101,7 @@ class HW2ClassificationC(Learning):
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
-        self.test_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'test_data'),
-                transform=self.params.transforms_test)
+        self.test_set = HW2ValidPairSet(validation=False, transform=self.params.transforms_test)
 
         self.test_loader = torch.utils.data.DataLoader(self.test_set,
                                                        batch_size=1, shuffle=False,
@@ -113,24 +111,21 @@ class HW2ClassificationC(Learning):
         if self.test_loader is None:
             self._load_test()
 
-        if self.label_to_class is None:
-            self._load_train()  # for class labels
-
-        results = torch.zeros(len(self.test_set.imgs), dtype=torch.int)
-
-        with torch.cuda.device(self.device):
-            with torch.no_grad():
-                self.model.eval()
-                for (i, item) in enumerate(tqdm(self.test_loader)):
-                    x = item[0].to(self.device)
-                    labels = torch.argmax(self.model(x), dim=1)
-                    file_id = int(self.test_set.imgs[i][0].split('\\')[-1].split('.')[0])
-                    results[file_id] = int(self.label_to_class[labels.item()])
-
         with open('results/' + str(self) + '.csv', 'w') as f:
-            f.write('id,label\n')
-            for i, result in enumerate(results):
-                f.write(str(i) + '.jpg,' + str(result.item()) + '\n')
+            f.write('Id,Category\n')
+            with torch.cuda.device(self.device):
+                with torch.no_grad():
+                    self.model.eval()
+                    for (i, item) in enumerate(tqdm(self.test_loader)):
+                        x1 = item[0].to(self.device)
+                        x2 = item[1].to(self.device)
+
+                        features1, _ = self.model(x1)
+                        features2, _ = self.model(x2)
+
+                        f.write(self.test_set.items[i][3] + ' ' +
+                                self.test_set.items[i][4] + ',' +
+                                str(self.score(features1, features2).item()) + '\n')
 
     def train(self, checkpoint_interval=5):
         self._validate(self.init_epoch)
