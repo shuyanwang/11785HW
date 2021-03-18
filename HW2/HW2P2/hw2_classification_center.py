@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 import torch.utils.data
 from utils.base import Params, Learning
 from tqdm import tqdm
@@ -8,13 +10,16 @@ from model_efficientnet import *
 from models import *
 from losses import *
 
+from hw2_verification_pair import HW2ValidPairSet
+from sklearn.metrics import roc_auc_score
+
 import argparse
 
 num_workers = 4
 
 
 class ParamsHW2ClassificationCenter(Params):
-    def __init__(self, B, lr, device, flip, normalize,
+    def __init__(self, B, lr, device, flip, normalize, rotate,
                  erase, resize, perspective, feature_dims, lambDA, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'):
 
@@ -39,6 +44,10 @@ class ParamsHW2ClassificationCenter(Params):
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
             self.str = self.str + 'f'
+
+        if rotate:
+            transforms_train.append(torchvision.transforms.RandomRotation(15))
+            self.str = self.str + 'r'
 
         if perspective:
             transforms_train.append(torchvision.transforms.RandomPerspective())
@@ -73,6 +82,10 @@ class HW2ClassificationC(Learning):
 
         print(str(self))
 
+    @staticmethod
+    def score(y1, y2):
+        return nn.CosineSimilarity(y1, y2)
+
     def _load_train(self):
         train_set = torchvision.datasets.ImageFolder(
                 os.path.join(self.params.data_dir, 'train_data'),
@@ -83,9 +96,8 @@ class HW2ClassificationC(Learning):
         self.label_to_class = train_set.classes
 
     def _load_valid(self):
-        valid_set = torchvision.datasets.ImageFolder(
-                os.path.join(self.params.data_dir, 'val_data'),
-                transform=self.params.transforms_test)
+        valid_set = HW2ValidPairSet(validation=True, transform=self.params.transforms_test)
+        self.gt_labels = valid_set.gt_array
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
@@ -164,28 +176,31 @@ class HW2ClassificationC(Learning):
         if self.valid_loader is None:
             self._load_valid()
 
-        # print('Validating...')
+        try:
+            a = self.gt_labels.shape
+        except:
+            self._load_valid()
+
+        valid_scores = np.zeros(self.gt_labels.shape)
+
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
-                total_loss = torch.zeros(1, device=self.device)
-                total_acc = torch.zeros(1, device=self.device)
-                for i, batch in enumerate(self.valid_loader):
-                    bx = batch[0].to(self.device)
-                    by = batch[1].to(self.device)
 
-                    features, prediction = self.model(bx)
-                    loss = self.criterion(features, prediction, by)
-                    total_loss += loss
-                    y_prime = torch.argmax(prediction, dim=1)
-                    total_acc += torch.count_nonzero(torch.eq(y_prime, by))
+                for i, batch in enumerate(tqdm(self.valid_loader)):
+                    bx1 = batch[0].to(self.device)
+                    bx2 = batch[1].to(self.device)
+                    by = batch[2].to(self.device)
 
-                loss_item = total_loss.item() / (i + 1)
-                accuracy_item = total_acc.item() / (i + 1) / self.params.B
-                self.writer.add_scalar('Loss/Validation', loss_item, epoch)
-                self.writer.add_scalar('Accuracy/Validation', accuracy_item, epoch)
-                print('epoch: ', epoch, 'Validation Loss: ', "%.5f" % loss_item,
-                      'Accuracy: ', "%.5f" % accuracy_item)
+                    y1 = self.model(bx1)
+                    y2 = self.model(bx2)
+
+                    score = self.score(y1, y2)
+                    valid_scores[i * self.params.B:i * self.params.B + by.shape[
+                        0]] = score.cpu().detach().numpy()
+
+                self.writer.add_scalar('Score/Validation',
+                                       roc_auc_score(self.gt_labels, valid_scores), epoch)
 
 
 def main():
@@ -208,6 +223,7 @@ def main():
     parser.add_argument('--loss', default='CrossEntropyCenterLoss')
     parser.add_argument('--feature_dims', default=1792, type=int)
     parser.add_argument('--lambDA', default=0.5, type=float)
+    parser.add_argument('--rotate', action='store_true')
 
     args = parser.parse_args()
 
@@ -215,7 +231,8 @@ def main():
                                            device='cuda:' + args.gpu_id, flip=args.flip,
                                            normalize=args.normalize, erase=args.erase,
                                            resize=args.resize, perspective=args.perspective,
-                                           feature_dims=args.feature_dims, lambDA=args.lambDA)
+                                           feature_dims=args.feature_dims, lambDA=args.lambDA,
+                                           rotate=args.rotate)
     model = eval(args.model + '(params)')
     learner = HW2ClassificationC(params, model, eval(args.loss))
     if args.epoch >= 0:

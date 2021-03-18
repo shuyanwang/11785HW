@@ -13,7 +13,7 @@ num_workers = 4
 
 
 class ParamsHW2Classification(Params):
-    def __init__(self, B, lr, dropout, device, flip, normalize,
+    def __init__(self, B, lr, dropout, device, flip, normalize, rotate,
                  erase, resize, perspective, max_epoch=201,
                  data_dir='c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-classification'):
 
@@ -36,6 +36,10 @@ class ParamsHW2Classification(Params):
         if flip:
             transforms_train.append(torchvision.transforms.RandomHorizontalFlip())
             self.str = self.str + 'f'
+
+        if rotate:
+            transforms_train.append(torchvision.transforms.RandomRotation(15))
+            self.str = self.str + 'r'
 
         if perspective:
             transforms_train.append(torchvision.transforms.RandomPerspective())
@@ -135,13 +139,15 @@ def main():
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
     parser.add_argument('--perspective', action='store_true')
     parser.add_argument('--load', default='', help='Load Name')
+    parser.add_argument('--rotate', action='store_true')
 
     args = parser.parse_args()
 
     params = ParamsHW2Classification(B=args.batch, dropout=args.dropout, lr=args.lr,
                                      device='cuda:' + args.gpu_id, flip=args.flip,
                                      normalize=args.normalize, erase=args.erase,
-                                     resize=args.resize, perspective=args.perspective)
+                                     resize=args.resize, perspective=args.perspective,
+                                     rotate=args.rotate)
     model = eval(args.model + '(params)')
     learner = HW2Classification(params, model)
     if args.epoch >= 0:
