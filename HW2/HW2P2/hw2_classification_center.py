@@ -84,7 +84,7 @@ class HW2ClassificationC(Learning):
 
     @staticmethod
     def score(y1, y2):
-        return nn.CosineSimilarity(y1, y2)
+        return torch.cosine_similarity(y1, y2)
 
     def _load_train(self):
         train_set = torchvision.datasets.ImageFolder(
@@ -136,6 +136,8 @@ class HW2ClassificationC(Learning):
                 f.write(str(i) + '.jpg,' + str(result.item()) + '\n')
 
     def train(self, checkpoint_interval=5):
+        self._validate(self.init_epoch)
+
         if self.train_loader is None:
             self._load_train()
 
@@ -176,10 +178,10 @@ class HW2ClassificationC(Learning):
         if self.valid_loader is None:
             self._load_valid()
 
-        try:
-            a = self.gt_labels.shape
-        except:
-            self._load_valid()
+        # try:
+        #     a = self.gt_labels.shape
+        # except:
+        #     self._load_valid()
 
         valid_scores = np.zeros(self.gt_labels.shape)
 
@@ -192,10 +194,11 @@ class HW2ClassificationC(Learning):
                     bx2 = batch[1].to(self.device)
                     by = batch[2].to(self.device)
 
-                    y1 = self.model(bx1)
-                    y2 = self.model(bx2)
+                    features1, prediction1 = self.model(bx1)
 
-                    score = self.score(y1, y2)
+                    features2, prediction2 = self.model(bx2)
+
+                    score = self.score(features1, features2)
                     valid_scores[i * self.params.B:i * self.params.B + by.shape[
                         0]] = score.cpu().detach().numpy()
 
