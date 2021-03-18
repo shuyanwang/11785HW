@@ -114,8 +114,6 @@ class ResNet(nn.Module):
         self.cin = 64
         # The number of channels feeding into the next residual layer
         # subject to update in residual layers: the proceeding layer takes this value
-        cout_list = [64, 128, 256, 512]
-        residual_layers = []
 
         residual_layers = [self.residual_layer(block, 64, layers[0], 1),
                            self.residual_layer(block, 128, layers[1], 2),
@@ -280,15 +278,6 @@ class ResNet10_256(Model):
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
-
-
-# class ResNet8_256(Model):
-#     def __init__(self, params):
-#         super().__init__(params)
-#         self.net = ResNet(BasicBlock, [1, 1, 1, 0], embedding=False, num_classes=256)
-#
-#     def forward(self, x: torch.Tensor):
-#         return self.net(x)
 
 
 class ResNet10C(Model):

@@ -1,4 +1,6 @@
 from efficientnet_pytorch import EfficientNet
+from torch.nn import functional
+
 from utils.base import *
 
 
@@ -94,13 +96,13 @@ class EfficientNetB2E(Model):
         return torch.flatten(self.net.extract_features(x), start_dim=1)
 
 
-class PretrainedB0_512(Model):
+class EfficientNetB0_512(Model):
     def __init__(self, params):
         super().__init__(params)
-        self.net = EfficientNet.from_pretrained('efficientnet-b0', num_classes=512)
+        self.net = EfficientNet.from_name('efficientnet-b0', num_classes=512)
 
     def forward(self, x: torch.Tensor):
-        return self.net(x)
+        return functional.normalize(self.net(x))
 
 
 class EfficientNetB0C(Model):
