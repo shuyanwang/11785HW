@@ -5,6 +5,7 @@ import torch.utils.data
 import torchvision
 
 from model_efficientnet import *
+from models import *
 from losses import *
 
 from hw2_verification_pair import HW2ValidPairSet
@@ -72,10 +73,15 @@ class ParamsHW2ClassificationCenter(Params):
 
 
 class HW2ClassificationC(Learning):
-    def __init__(self, params: ParamsHW2ClassificationCenter, model, loss: CrossEntropyCenterLoss):
-        super().__init__(params, model, torch.optim.Adam, None)
-
+    def __init__(self, params: ParamsHW2ClassificationCenter, model, loss: CrossEntropyCenterLoss,
+                 optimizer):
+        super().__init__(params, model, None, None)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                          lr=self.params.lr) if optimizer == 'Adam' else \
+            torch.optim.SGD(self.model.parameters(), lr=self.params.lr, weight_decay=5e-5,
+                            momentum=0.9)
         self.criterion = loss(params).cuda(params.device)
+        self.str = self.str + '_' + optimizer
 
         print(str(self))
 
@@ -177,7 +183,7 @@ class HW2ClassificationC(Learning):
             with torch.no_grad():
                 self.model.eval()
 
-                for i, batch in enumerate(tqdm(self.valid_loader)):
+                for i, batch in enumerate(self.valid_loader):
                     bx1 = batch[0].to(self.device)
                     bx2 = batch[1].to(self.device)
                     by = batch[2].to(self.device)
@@ -190,7 +196,7 @@ class HW2ClassificationC(Learning):
                         0]] = score.cpu().detach().numpy()
                 score_item = roc_auc_score(self.gt_labels, valid_scores)
                 self.writer.add_scalar('Score/Validation', score_item, epoch)
-                print('epoch: ', epoch, 'Validation Score', "%.5f" % score_item)
+                print('epoch:', epoch, 'Validation Score:', "%.5f" % score_item)
 
 
 def main():
@@ -214,6 +220,7 @@ def main():
     parser.add_argument('--feature_dims', default=1792, type=int)
     parser.add_argument('--lambDA', default=0.5, type=float)
     parser.add_argument('--rotate', action='store_true')
+    parser.add_argument('--optimizer', default='Adam')
 
     args = parser.parse_args()
 
@@ -224,12 +231,12 @@ def main():
                                            feature_dims=args.feature_dims, lambDA=args.lambDA,
                                            rotate=args.rotate)
     model = eval(args.model + '(params)')
-    learner = HW2ClassificationC(params, model, eval(args.loss))
+    learner = HW2ClassificationC(params, model, eval(args.loss), args.optimizer)
     if args.epoch >= 0:
         if args.load == '':
-            learner.load_model(args.epoch)
+            learner.load_model(args.epoch, optimizer=False)
         else:
-            learner.load_model(args.epoch, args.load)
+            learner.load_model(args.epoch, args.load, optimizer=False)
 
     if args.train:
         learner.train(checkpoint_interval=args.save)

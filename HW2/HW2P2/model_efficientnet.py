@@ -105,16 +105,16 @@ class EfficientNetB0_512(Model):
         return F.normalize(self.net(x))
 
 
-class EfficientNetB0C(Model):
-    def __init__(self, params):
-        super().__init__(params)
-        self.net = EfficientNet.from_name('efficientnet-b0', num_classes=params.feature_dims,
-                                          image_size=(params.size, params.size))
-        self.fc = nn.Linear(params.feature_dims, params.output_channels)
-
-    def forward(self, x: torch.Tensor):
-        features = torch.flatten(self.net.extract_features(x), start_dim=1)
-        return features, self.fc(features)
+# class EfficientNetB0C(Model):
+#     def __init__(self, params):
+#         super().__init__(params)
+#         self.net = EfficientNet.from_name('efficientnet-b0', num_classes=params.feature_dims,
+#                                           image_size=(params.size, params.size))
+#         self.fc = nn.Linear(params.feature_dims, params.output_channels)
+#
+#     def forward(self, x: torch.Tensor):
+#         features = torch.flatten(self.net.extract_features(x), start_dim=1)
+#         return features, self.fc(features)
 
 
 class EfficientNetB4C(Model):
@@ -126,3 +126,52 @@ class EfficientNetB4C(Model):
     def forward(self, x: torch.Tensor):
         features = torch.flatten(self.net._avg_pooling(self.net.extract_features(x)), start_dim=1)
         return F.normalize(features), self.net._fc(self.net._dropout(features))
+
+
+class EfficientNetB0C(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = EfficientNet.from_name('efficientnet-b0',
+                                          num_classes=self.params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        features = torch.flatten(self.net._avg_pooling(self.net.extract_features(x)), start_dim=1)
+        return F.normalize(features), self.net._fc(self.net._dropout(features))
+
+
+class EfficientNetB0C512(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = EfficientNet.from_name('efficientnet-b0',
+                                          num_classes=512)
+        self.fc = nn.Linear(512, self.params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        features = F.relu(self.net(x))
+        return F.normalize(features), self.fc(features)
+
+
+class EfficientNetB0CS(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = EfficientNet.from_name('efficientnet-b0',
+                                          num_classes=self.params.output_channels)
+        self.feature_fc = nn.Linear(1280, self.params.feature_dims)
+
+    def forward(self, x: torch.Tensor):
+        features = torch.flatten(self.net._avg_pooling(self.net.extract_features(x)), start_dim=1)
+        features_out = F.relu(self.feature_fc(features))
+        return features_out, self.net._fc(self.net._dropout(features))
+
+
+class EfficientNetB0CDS(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = EfficientNet.from_name('efficientnet-b0',
+                                          num_classes=self.params.output_channels)
+        self.feature_fc = nn.Linear(1280, self.params.feature_dims)
+
+    def forward(self, x: torch.Tensor):
+        features = torch.flatten(self.net._avg_pooling(self.net.extract_features(x)), start_dim=1)
+        features = self.net._dropout(features)
+        return F.relu(self.feature_fc(features)), self.net._fc(features)

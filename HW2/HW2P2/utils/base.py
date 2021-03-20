@@ -135,7 +135,7 @@ class Learning(ABC):
     def _load_test(self):
         pass
 
-    def load_model(self, epoch=20, name=None):
+    def load_model(self, epoch=20, name=None, model=True, optimizer=True, loss=True):
         if name is None:
             loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar',
                                 map_location=self.device)
@@ -143,11 +143,13 @@ class Learning(ABC):
             loaded = torch.load('checkpoints/' + name + 'e=' + str(epoch) + '.tar',
                                 map_location=self.device)
         self.init_epoch = loaded['epoch']
-        self.model.load_state_dict(loaded['model_state_dict'])
-        self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
-
-        if 'loss_state_dict' in loaded:
-            self.criterion.load_state_dict(loaded['loss_state_dict'], strict=False)
+        if model:
+            self.model.load_state_dict(loaded['model_state_dict'])
+        if optimizer:
+            self.optimizer.load_state_dict(loaded['optimizer_state_dict'])
+        if loss:
+            if 'loss_state_dict' in loaded:
+                self.criterion.load_state_dict(loaded['loss_state_dict'], strict=False)
 
     def save_model(self, epoch):
         torch.save({
