@@ -87,6 +87,7 @@ class HW2ClassificationC(Learning):
 
     @staticmethod
     def score(y1, y2, dim=1):
+        # P2-Dist-based similarity is no better than Cosine
         return torch.cosine_similarity(y1, y2, dim=dim)
 
     def _load_train(self):
