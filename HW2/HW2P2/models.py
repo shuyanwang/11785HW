@@ -417,3 +417,121 @@ class ResNet34K3RC(Model):
     def forward(self, x: torch.Tensor):
         features = torch.relu(self.net(x))
         return features, self.fc(features)
+
+
+class ResNet101K3RC(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetK3(BottleNeckBlock, [3, 4, 23, 3], embedding=True,
+                            num_classes=params.feature_dims)
+        self.fc = nn.Linear(params.feature_dims, params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        features = torch.relu(self.net(x))
+        return features, self.fc(features)
+
+
+class ResNetK3S1(nn.Module):
+    """
+    Note1:
+        The architecture is from https://arxiv.org/abs/1512.03385 (ResNet) and the
+        pytorch doc at https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html
+        It is a simplified version of the ResNet and it adapts to HW2
+
+    Note2:
+        As per course policy at https://piazza.com/class/khtqzctrciu1fp?cid=71,
+        I looked at some public resources, including:
+        https://towardsdatascience.com/an-overview-of-resnet-and-its-variants-5281e2f56035
+        https://ngc.nvidia.com/catalog/resources/nvidia:resnet_50_v1_5_for_pytorch
+        https://github.com/KaimingHe/deep-residual-networks
+    """
+
+    def __init__(self, block: Type[Union[BasicBlock, BottleNeckBlock]], layers, embedding=False,
+                 num_classes=4000):
+        super().__init__()
+        self.embedding = embedding
+
+        self.conv = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn = nn.BatchNorm2d(64)
+        self.pool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.cin = 64
+        # The number of channels feeding into the next residual layer
+        # subject to update in residual layers: the proceeding layer takes this value
+
+        residual_layers = [self.residual_layer(block, 64, layers[0], 1),
+                           self.residual_layer(block, 128, layers[1], 1),
+                           self.residual_layer(block, 256, layers[2], 1),
+                           self.residual_layer(block, 512, layers[3], 1)]
+
+        self.residual_layers = nn.ModuleList(residual_layers)  # Register the layers
+
+        self.pool2 = nn.AdaptiveAvgPool2d((1, 1))
+
+        if not embedding:
+            self.linear = nn.Linear((4 if block.__name__ == 'BottleNeckBlock' else 1) * 512,
+                                    num_classes)
+        else:
+            self.linear = None
+
+        #### He Initialization
+        # from https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(module, nn.BatchNorm2d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+
+    def residual_layer(self, block, cout, num_blocks, stride):
+
+        if num_blocks == 0:
+            return nn.Identity()
+
+        #### For BottleNeckBlock blocks, we need to down-sample
+        # because we need cin to match cout for addition
+
+        expansion = 4 if block.__name__ == 'BottleNeckBlock' else 1
+
+        layers = [block(self.cin, cout, stride, stride > 1 or self.cin != cout * expansion)]
+        self.cin = cout * expansion
+        for _ in range(1, num_blocks):
+            layers.append(block(self.cin, cout))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        :param x:
+        :return: If embedding, return the flattened feature vector
+        """
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        for residual_layer in self.residual_layers:
+            x = residual_layer(x)
+
+        x = torch.flatten(self.pool2(x), 1)
+
+        if self.embedding:
+            return F.relu(x)
+
+        return self.linear(x)
+
+    def features_no_pool(self, x):
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        for residual_layer in self.residual_layers:
+            x = residual_layer(x)
+
+        x = torch.flatten(x, 1)
+        return x
+
+
+class ResNet34K3S1RC(Model):
+    def __init__(self, params):
+        super().__init__(params)
+        self.net = ResNetK3S1(BasicBlock, [3, 4, 6, 3], embedding=True,
+                            num_classes=params.feature_dims)
+        self.fc = nn.Linear(params.feature_dims, params.output_channels)
+
+    def forward(self, x: torch.Tensor):
+        features = self.net(x)
+        return features, self.fc(torch.relu(features))

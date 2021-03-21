@@ -86,8 +86,8 @@ class HW2ClassificationC(Learning):
         print(str(self))
 
     @staticmethod
-    def score(y1, y2):
-        return torch.cosine_similarity(y1, y2)
+    def score(y1, y2, dim=1):
+        return torch.cosine_similarity(y1, y2, dim=dim)
 
     def _load_train(self):
         train_set = torchvision.datasets.ImageFolder(
@@ -132,7 +132,8 @@ class HW2ClassificationC(Learning):
                         for b in range(features1.shape[0]):
                             f.write(self.test_set.items[i * self.params.B + b][3] + ' ' +
                                     self.test_set.items[i * self.params.B + b][4] + ',' +
-                                    str(self.score(features1[b], features2[b]).item()) + '\n')
+                                    str(self.score(features1[b], features2[b],
+                                                   dim=0).item()) + '\n')
 
     def train(self, checkpoint_interval=5):
         self._validate(self.init_epoch)
@@ -234,9 +235,9 @@ def main():
     learner = HW2ClassificationC(params, model, eval(args.loss), args.optimizer)
     if args.epoch >= 0:
         if args.load == '':
-            learner.load_model(args.epoch, optimizer=False)
+            learner.load_model(args.epoch)
         else:
-            learner.load_model(args.epoch, args.load, optimizer=False)
+            learner.load_model(args.epoch, args.load)
 
     if args.train:
         learner.train(checkpoint_interval=args.save)
