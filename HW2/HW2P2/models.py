@@ -4,7 +4,30 @@ import numpy as np
 from utils.base import *
 from hw2_classification import ParamsHW2Classification
 import torch.nn.functional as F
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
+
+"""
+Note1:
+    The ResNet architecture is from https://arxiv.org/abs/1512.03385 (ResNet) and the
+    pytorch doc at https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html
+    It is a simplified version of the ResNet and it adapts to HW2.
+    
+    As per course policy at https://piazza.com/class/khtqzctrciu1fp?cid=71,
+    I looked at some public resources, including:
+    https://towardsdatascience.com/an-overview-of-resnet-and-its-variants-5281e2f56035
+    https://ngc.nvidia.com/catalog/resources/nvidia:resnet_50_v1_5_for_pytorch
+    https://github.com/KaimingHe/deep-residual-networks
+
+Note 2:
+    The EfficientNet architecture is from https://arxiv.org/abs/1905.11946
+    As per course policy, I looked at open source code at 
+    https://github.com/lukemelas/EfficientNet-PyTorch. 
+    However, I learned the algorithm flow and wrote my own code at the end,
+    including adaptation to HW2 and changes in data structures,
+    as well as other implementation techniques. For example, dropout on connections are
+    written as a method in order to better utilize nn.Module's properties. There are also
+    significant simplifications.
+"""
 
 
 class ResBlock(nn.Module):
@@ -30,20 +53,6 @@ class ResBlock(nn.Module):
 
 
 class ResNetK3S1(nn.Module):
-    """
-    Note1:
-        The architecture is from https://arxiv.org/abs/1512.03385 (ResNet) and the
-        pytorch doc at https://pytorch.org/vision/0.8/_modules/torchvision/models/resnet.html
-        It is a simplified version of the ResNet and it adapts to HW2
-
-    Note2:
-        As per course policy at https://piazza.com/class/khtqzctrciu1fp?cid=71,
-        I looked at some public resources, including:
-        https://towardsdatascience.com/an-overview-of-resnet-and-its-variants-5281e2f56035
-        https://ngc.nvidia.com/catalog/resources/nvidia:resnet_50_v1_5_for_pytorch
-        https://github.com/KaimingHe/deep-residual-networks
-    """
-
     def __init__(self, layers, embedding=False,
                  num_classes=4000):
         super().__init__()
@@ -143,13 +152,24 @@ class EfficientNetParams:
 @dataclass
 class MBBlockParams:
     num_repeat: int = field(default=1)  # repeat start at 2
-    kernel_size: int = field(default=1)
+    kernel_size: int = field(default=3)
     stride: int = field(default=1)
-    expand_ratio: int = field(default=1)
+    expand_ratio: int = field(default=6)
     input_filters: int = field(default=1)
     output_filters: int = field(default=1)
-    se_ratio: float = field(default=-1.0)
+    se_ratio: float = field(default=0.25)
     id_skip: bool = field(default=False)
+
+
+basicParamsList = [
+    MBBlockParams(expand_ratio=1, input_filters=32, output_filters=16),
+    MBBlockParams(num_repeat=2, stride=2, input_filters=16, output_filters=24),
+    MBBlockParams(num_repeat=2, stride=2, input_filters=24, output_filters=40, kernel_size=5),
+    MBBlockParams(num_repeat=3, stride=2, input_filters=40, output_filters=80),
+    MBBlockParams(num_repeat=3, input_filters=80, output_filters=112, kernel_size=5),
+    MBBlockParams(num_repeat=4, stride=2, input_filters=112, output_filters=192, kernel_size=5),
+    MBBlockParams(num_repeat=1, stride=1, input_filters=192, output_filters=320),
+]
 
 
 def Swish(x: torch.Tensor):
@@ -158,12 +178,12 @@ def Swish(x: torch.Tensor):
 
 def roundFilter(filters, width_coefficients, depth_divisor: int):
     filters = int(filters * width_coefficients)
-    return np.max(depth_divisor,
-                  (int(filters + depth_divisor / 2) // depth_divisor) * depth_divisor)
+    return max(depth_divisor,
+               (int(filters + depth_divisor / 2) // depth_divisor) * depth_divisor)
 
 
 def roundDepth(repeats, depth_coefficients):
-    return np.ceil(repeats * depth_coefficients)
+    return int(np.ceil(repeats * depth_coefficients))
 
 
 class EfficientNetB4(Model):
@@ -174,7 +194,7 @@ class EfficientNetB4(Model):
     def __init__(self, params):
         super().__init__(params)
         eParams = EfficientNetParams()
-        self.net = EfficientNet(params, eParams)
+        self.net = EfficientNet(params, eParams, basicParamsList)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -258,17 +278,9 @@ class MBConvBlock(nn.Module):
 
 
 class EfficientNet(nn.Module):
-    """
-    The architecture is from https://arxiv.org/abs/1905.11946
-    As per course policy @ https://piazza.com/class/khtqzctrciu1fp?cid=71, I looked at open
-    source code at https://github.com/lukemelas/EfficientNet-PyTorch. However, I learned the
-    algorithm flow and wrote my own code at the end, including adaptation to HW2 and changes in data
-    structures, as well as other implementation techniques. For example, dropout should be written
-    as a method in order to better utilize nn.Module's properties.
-    """
-
     def __init__(self, params: ParamsHW2Classification,
-                 efficientNetParams: EfficientNetParams):
+                 efficientNetParams: EfficientNetParams,
+                 basic_block_args):
         super().__init__()
         self.params = params
         self.efficientNetParams = efficientNetParams
@@ -283,8 +295,7 @@ class EfficientNet(nn.Module):
         image_size = image_size // 2
 
         blocks: List[MBConvBlock] = []
-        blocks_args = []
-        for block_args in blocks_args:
+        for block_args in basic_block_args:
             block_args = MBBlockParams(**asdict(block_args))
             block_args.input_filters = roundFilter(block_args.input_filters,
                                                    efficientNetParams.width_coefficients,

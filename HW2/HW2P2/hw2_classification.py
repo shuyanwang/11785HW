@@ -123,7 +123,7 @@ class HW2Classification(Learning):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=32, type=int)
+    parser.add_argument('--batch', help='Batch Size', default=16, type=int)
     parser.add_argument('--dropout', default=0.4, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
