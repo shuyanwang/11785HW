@@ -6,8 +6,8 @@ from torch.nn import functional
 
 class CenterLoss(nn.Module):
     """
-    I optimized the center loss implementation with
-     mask_select in place of loops -> performance improvement
+    The original code is from the bootcamp (allowed according to course policy).
+    I also used mask_select in place of loops -> performance improvement
     """
 
     def __init__(self, params):
