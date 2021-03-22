@@ -1,10 +1,9 @@
 import os
 import torch.utils.data
-from utils.base import Params, Learning
+from utils.base import *
 from tqdm import tqdm
 import torchvision
 
-from model_efficientnet import *
 from models import *
 
 import argparse
@@ -124,19 +123,19 @@ class HW2Classification(Learning):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=1024, type=int)
-    parser.add_argument('--dropout', default=0.0, type=float)
+    parser.add_argument('--batch', help='Batch Size', default=32, type=int)
+    parser.add_argument('--dropout', default=0.4, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='ResNet101', help='Model Name')
+    parser.add_argument('--model', default='EfficientNetB4', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--flip', action='store_true')
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
-    parser.add_argument('--resize', default=224, help='Resize Image', type=int)
-    parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
+    parser.add_argument('--resize', default=380, help='Resize Image', type=int)
+    parser.add_argument('--save', default=1, type=int, help='Checkpoint interval')
     parser.add_argument('--perspective', action='store_true')
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--rotate', action='store_true')
@@ -166,3 +165,4 @@ if __name__ == '__main__':
     main()
 
 #### Observations: Normalization useless; Flip and Erasing used together IS useful.
+# --train --flip --erase --perspective

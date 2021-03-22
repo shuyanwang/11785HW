@@ -3,17 +3,50 @@ import os
 import numpy as np
 import torch.utils.data
 import torchvision
+from torchvision.datasets.folder import pil_loader
 
-from model_efficientnet import *
+# noinspection PyUnresolvedReferences
 from models import *
 from losses import *
+from utils.base import *
 
-from hw2_verification_pair import HW2ValidPairSet
 from sklearn.metrics import roc_auc_score
 
 import argparse
 
 num_workers = 4
+
+
+class HW2ValidPairSet(torch.utils.data.Dataset):
+    def __getitem__(self, index):
+        item = self.items[index]
+        return self.transform(pil_loader(item[0])), self.transform(pil_loader(item[1])), item[2], \
+               item[0], item[1]  # for testing
+
+    def __len__(self):
+        return len(self.items)
+
+    def __init__(self, validation, transform):
+        self.set_path = 'c:/DLData/11785_data/HW2/11785-spring2021-hw2p2s1-face-verification'
+        txt_path = 'verification_pairs_val.txt' if validation else 'verification_pairs_test.txt'
+        self.items = []
+        self.transform = transform
+        with open(os.path.join(self.set_path, txt_path)) as f:
+            pairs = f.read().splitlines()
+            for pair in pairs:
+                pair = pair.split(' ')
+                if validation:
+                    self.items.append((os.path.join(self.set_path, pair[0]),
+                                       os.path.join(self.set_path, pair[1]),
+                                       1 if int(pair[2]) > 0 else 0, pair[0], pair[1]))
+                else:
+                    self.items.append((os.path.join(self.set_path, pair[0]),
+                                       os.path.join(self.set_path, pair[1]),
+                                       0, pair[0], pair[1]))
+
+        self.gt_array = np.zeros(len(self.items), dtype=int)
+        for (i, item) in enumerate(self.items):
+            self.gt_array[i] = item[2]
 
 
 class ParamsHW2ClassificationCenter(Params):
@@ -214,13 +247,13 @@ def main():
     parser.add_argument('--flip', action='store_true')
     parser.add_argument('--normalize', action='store_true')
     parser.add_argument('--erase', action='store_true')
-    parser.add_argument('--resize', default=224, help='Resize Image', type=int)
+    parser.add_argument('--resize', default=-1, help='Resize Image', type=int)
     parser.add_argument('--save', default=5, type=int, help='Checkpoint interval')
     parser.add_argument('--perspective', action='store_true')
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--loss', default='CrossEntropyCenterLoss')
     parser.add_argument('--feature_dims', default=1792, type=int)
-    parser.add_argument('--lambDA', default=0.5, type=float)
+    parser.add_argument('--lambDA', default=0.01, type=float)
     parser.add_argument('--rotate', action='store_true')
     parser.add_argument('--optimizer', default='Adam')
 
@@ -248,5 +281,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-#### TODO: Efficient Net; Center Loss; Clean Up Code

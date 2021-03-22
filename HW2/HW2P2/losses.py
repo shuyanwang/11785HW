@@ -6,9 +6,8 @@ from torch.nn import functional
 
 class CenterLoss(nn.Module):
     """
-    Args:
-        num_classes (int): number of classes.
-        feat_dim (int): feature dimension.
+    I optimized the center loss implementation with
+     mask_select in place of loops -> performance improvement
     """
 
     def __init__(self, params):
@@ -20,31 +19,16 @@ class CenterLoss(nn.Module):
         self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
 
     def forward(self, x, labels):
-        """
-        Args:
-            x: feature matrix with shape (batch_size, feat_dim).
-            labels: ground truth labels with shape (batch_size).
-        """
         batch_size = x.size(0)
-        distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
-                  torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes,
-                                                                             batch_size).t()
-        # distmat.addmm_(x, self.centers.t(), 1, -2)
+        distances = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) \
+                    + torch.pow(self.centers, 2).sum(
+                dim=1, keepdim=True).expand(self.num_classes, batch_size).transpose()
 
-        distmat -= 2 * x @ self.centers.t()
-
+        distances -= 2 * x @ self.centers.t()
         labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
         mask = labels.eq(self.classes.expand(batch_size, self.num_classes))
 
-        # dist = torch.zeros(batch_size,device=x.device)
-        # for i in range(batch_size):
-        #     value = distmat[i][mask[i]]
-        #     dist[i] = value.clamp(min=1e-12, max=1e+12)  # for numerical stability
-        # loss = dist.mean()
-
-        return torch.mean(torch.masked_select(distmat, mask))
-
-        # return loss
+        return torch.mean(torch.masked_select(distances, mask))
 
 
 class CrossEntropyCenterLoss(nn.Module):
@@ -59,38 +43,6 @@ class CrossEntropyCenterLoss(nn.Module):
         return self.CE(y, label) + self.lambDA * self.center(feature, label)
 
 
-#
-# class ContrastiveLoss(PairLoss):
-#     def __init__(self, m=1.0):
-#         super(ContrastiveLoss, self).__init__()
-#         self.m = m
-#
-#     def forward(self, x1, x2, y):
-#         """
-#         Hinge embedding loss for 0-1, 2 class
-#         :param x1:
-#         :param x2:
-#         :param y: 0 - 1
-#         :return:
-#         """
-#
-#         dist = torch.pairwise_distance(x1, x2, p=2)
-#         return torch.mean(torch.clamp(self.m - dist, min=0.0) * (1 - y) + dist * y)
-#
-#     @staticmethod
-#     def predict(y1, y2, threshold):
-#         """
-#         Prediction
-#         :param y1: (N,*)
-#         :param y2:
-#         :param threshold: float
-#         :return: (N)
-#         """
-#         dist = torch.pairwise_distance(y1, y2, p=2)
-#         return torch.where(torch.le(dist, threshold), 1, 0)
-
-
-# noinspection PyAttributeOutsideInit
 class AdaptiveTripletMarginLoss(TripletLoss):
     def score(self, y1, y2):
         dist = torch.pairwise_distance(y1, y2)
