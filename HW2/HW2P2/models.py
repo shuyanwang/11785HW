@@ -26,7 +26,7 @@ Note 2:
     including adaptation to HW2 and changes in data structures,
     as well as other implementation techniques. For example, dropout on connections are
     written as a method in order to better utilize nn.Module's properties. There are also
-    significant simplifications.
+    significant simplifications, including the same-padding conv2d imitating tensorflow
 """
 
 
@@ -172,17 +172,17 @@ basicParamsList = [
 ]
 
 
-def Swish(x: torch.Tensor):
+def swish(x: torch.Tensor):
     return x * torch.sigmoid(x)
 
 
-def roundFilter(filters, width_coefficients, depth_divisor: int):
+def round_filter(filters, width_coefficients, depth_divisor: int):
     filters = int(filters * width_coefficients)
     return max(depth_divisor,
                (int(filters + depth_divisor / 2) // depth_divisor) * depth_divisor)
 
 
-def roundDepth(repeats, depth_coefficients):
+def round_depth(repeats, depth_coefficients):
     return int(np.ceil(repeats * depth_coefficients))
 
 
@@ -193,15 +193,15 @@ class EfficientNetB4(Model):
 
     def __init__(self, params):
         super().__init__(params)
-        eParams = EfficientNetParams()
-        self.net = EfficientNet(params, eParams, basicParamsList)
+        e_params = EfficientNetParams()
+        self.net = EfficientNet(params, e_params, basicParamsList)
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
 
 
 class MBConvBlock(nn.Module):
-    def dropConnect(self, x):
+    def drop_connect(self, x):
         if not self.training:
             return x
 
@@ -210,128 +210,112 @@ class MBConvBlock(nn.Module):
         distribution_tensor = torch.as_tensor(distribution, device=self.device)
         return x / (1 - self.dropout_connect_rate) * distribution_tensor
 
-    def __init__(self, params: ParamsHW2Classification, efficientNetParams: EfficientNetParams,
-                 blockParams: MBBlockParams):
+    def __init__(self, params: ParamsHW2Classification, e_params: EfficientNetParams,
+                 b_params: MBBlockParams):
         super().__init__()
-        self.device = params.device
-        self._block_args = blockParams
-        self._bn_mom = efficientNetParams.batch_norm_momentum
-        self._bn_eps = efficientNetParams.batch_norm_epsilon
-        self.has_se = (self._block_args.se_ratio is not None) and (
-                0 < self._block_args.se_ratio <= 1)
-        self.id_skip = blockParams.id_skip
+        self.device = params.device  # needed in dropConnect
+        self.block_params = b_params  # needed in forward
+        self.dropout_connect_rate = 0  # also needed in forward; will be modified before use
 
-        cin = self._block_args.input_filters
-        cout = self._block_args.input_filters * self._block_args.expand_ratio
+        cout = b_params.input_filters * b_params.expand_ratio
 
-        if self._block_args.expand_ratio != 1:
-            self._expand_conv = SamePaddingConv2D(cin=cin, cout=cout, kernel_size=1,
-                                                  size=params.size)
-            self._bn0 = nn.BatchNorm2d(num_features=cout, momentum=self._bn_mom, eps=self._bn_eps)
+        if b_params.expand_ratio > 1:
+            self.conv0 = SamePaddingConv2D(cin=b_params.input_filters,
+                                           cout=cout, kernel_size=1, size=params.size)
+            self.bn0 = nn.BatchNorm2d(num_features=cout, eps=e_params.batch_norm_epsilon,
+                                      momentum=e_params.batch_norm_momentum)
 
-        self._depthwise_conv = SamePaddingConv2D(cin=cout, cout=cout, groups=cout,
-                                                 kernel_size=self._block_args.kernel_size,
-                                                 stride=self._block_args.stride, size=params.size)
-        self._bn1 = nn.BatchNorm2d(num_features=cout, momentum=self._bn_mom, eps=self._bn_eps)
-        image_size = int(np.ceil(params.size / self._block_args.stride))
+        self.conv1 = SamePaddingConv2D(cin=cout, cout=cout, groups=cout,
+                                       kernel_size=b_params.kernel_size,
+                                       stride=b_params.stride, size=params.size)
 
-        if self.has_se:
-            num_squeezed_channels = max(1, int(
-                    self._block_args.input_filters * self._block_args.se_ratio))
-            self._se_reduce = SamePaddingConv2D(cin=cout, cout=num_squeezed_channels, size=1,
-                                                kernel_size=1)
-            self._se_expand = SamePaddingConv2D(cin=num_squeezed_channels, cout=cout, size=1,
-                                                kernel_size=1)
+        self.bn1 = nn.BatchNorm2d(num_features=cout, eps=e_params.batch_norm_epsilon,
+                                  momentum=e_params.batch_norm_momentum)
 
-        final_cout = self._block_args.output_filters
-        self._project_conv = SamePaddingConv2D(cin=cout, cout=final_cout, kernel_size=1,
-                                               size=image_size)
-        self._bn2 = nn.BatchNorm2d(num_features=final_cout, momentum=self._bn_mom, eps=self._bn_eps)
-        self.dropout_connect_rate = 0
+        num_squeezed_channels = max(1, int(b_params.input_filters * b_params.se_ratio))
+        self.conv2 = SamePaddingConv2D(cin=cout, cout=num_squeezed_channels, size=1, kernel_size=1)
+        self.conv3 = SamePaddingConv2D(cin=num_squeezed_channels, cout=cout, size=1, kernel_size=1)
+
+        self.conv4 = SamePaddingConv2D(cin=cout, cout=b_params.output_filters, kernel_size=1,
+                                       size=int(np.ceil(params.size / b_params.stride)))
+        self.bn2 = nn.BatchNorm2d(num_features=b_params.output_filters,
+                                  eps=e_params.batch_norm_epsilon,
+                                  momentum=e_params.batch_norm_momentum)
 
     def forward(self, x):
         x0 = x
-        if self._block_args.expand_ratio != 1:
-            x = self._expand_conv(x)
-            x = self._bn0(x)
-            x = Swish(x)
+        if self.block_params.expand_ratio > 1:
+            x = swish(self.bn0(self.conv0(x)))
 
-        x = self._depthwise_conv(x)
-        x = self._bn1(x)
-        x = Swish(x)
+        x = swish(self.bn1(self.conv1(x)))
 
-        if self.has_se:
-            x_squeezed = F.adaptive_avg_pool2d(x, (1, 1))
-            x_squeezed = self._se_reduce(x_squeezed)
-            x_squeezed = Swish(x_squeezed)
-            x_squeezed = self._se_expand(x_squeezed)
-            x = torch.sigmoid(x_squeezed) * x
+        x_squeezed = self.conv3(swish(self.conv2(F.adaptive_avg_pool2d(x, (1, 1)))))
+        x = torch.sigmoid(x_squeezed) * x
 
-        x = self._project_conv(x)
-        x = self._bn2(x)
+        x = self.bn2(self.conv4(x))
 
-        if self.id_skip and self._block_args.stride == 1 and self._block_args.input_filters == \
-                self._block_args.output_filters:
-            x = self.dropConnect(x)
+        if self.block_params.id_skip and self.block_params.stride == 1 \
+                and self.block_params.input_filters == self.block_params.output_filters:
+            x = self.drop_connect(x)
             x = x + x0
         return x
 
 
 class EfficientNet(nn.Module):
     def __init__(self, params: ParamsHW2Classification,
-                 efficientNetParams: EfficientNetParams,
+                 e_params: EfficientNetParams,
                  basic_block_args):
         super().__init__()
         self.params = params
-        self.efficientNetParams = efficientNetParams
+        self.e_params = e_params
 
         image_size = params.size
-        self.conv0 = SamePaddingConv2D(size=image_size, cin=efficientNetParams.cin,
-                                       cout=efficientNetParams.cout_conv0,
+        self.conv0 = SamePaddingConv2D(size=image_size, cin=e_params.cin,
+                                       cout=e_params.cout_conv0,
                                        kernel_size=3, stride=2)
-        self.bn0 = nn.BatchNorm2d(num_features=efficientNetParams.cout_conv0,
-                                  momentum=efficientNetParams.batch_norm_momentum,
-                                  eps=efficientNetParams.batch_norm_epsilon)
+        self.bn0 = nn.BatchNorm2d(num_features=e_params.cout_conv0,
+                                  momentum=e_params.batch_norm_momentum,
+                                  eps=e_params.batch_norm_epsilon)
         image_size = image_size // 2
 
         blocks: List[MBConvBlock] = []
         for block_args in basic_block_args:
             block_args = MBBlockParams(**asdict(block_args))
-            block_args.input_filters = roundFilter(block_args.input_filters,
-                                                   efficientNetParams.width_coefficients,
-                                                   efficientNetParams.depth_divisor)
-            block_args.output_filters = roundFilter(block_args.output_filters,
-                                                    efficientNetParams.width_coefficients,
-                                                    efficientNetParams.depth_divisor)
-            block_args.num_repeat = roundDepth(block_args.num_repeat,
-                                               efficientNetParams.depth_coefficients)
+            block_args.input_filters = round_filter(block_args.input_filters,
+                                                    e_params.width_coefficients,
+                                                    e_params.depth_divisor)
+            block_args.output_filters = round_filter(block_args.output_filters,
+                                                     e_params.width_coefficients,
+                                                     e_params.depth_divisor)
+            block_args.num_repeat = round_depth(block_args.num_repeat,
+                                                e_params.depth_coefficients)
 
-            blocks.append(MBConvBlock(params, efficientNetParams, block_args))
+            blocks.append(MBConvBlock(params, e_params, block_args))
             image_size = int(np.ceil(image_size / block_args.stride))
             if block_args.num_repeat > 1:
                 block_args = MBBlockParams(**asdict(block_args))
                 block_args.stride = 1
                 block_args.input_filters = block_args.output_filters
             for _ in range(block_args.num_repeat - 1):
-                blocks.append(MBConvBlock(params, efficientNetParams, block_args))
+                blocks.append(MBConvBlock(params, e_params, block_args))
 
-        N = len(blocks)
-        for i in range(N):
-            blocks[i].dropout_connect_rate = self.efficientNetParams.drop_connect_rate * i / N
+        n = len(blocks)
+        for i in range(n):
+            blocks[i].dropout_connect_rate = self.e_params.drop_connect_rate * i / n
 
         self.MBBlocks = nn.Sequential(*blocks)
 
-        self.conv1 = SamePaddingConv2D(size=image_size, cin=448, cout=efficientNetParams.cout_conv1,
+        self.conv1 = SamePaddingConv2D(size=image_size, cin=448, cout=e_params.cout_conv1,
                                        kernel_size=1)
-        self.bn1 = nn.BatchNorm2d(num_features=efficientNetParams.cout_conv1,
-                                  momentum=efficientNetParams.batch_norm_momentum,
-                                  eps=efficientNetParams.batch_norm_epsilon)
-        self.fc = nn.Linear(efficientNetParams.cout_conv1, params.output_channels)
+        self.bn1 = nn.BatchNorm2d(num_features=e_params.cout_conv1,
+                                  momentum=e_params.batch_norm_momentum,
+                                  eps=e_params.batch_norm_epsilon)
+        self.fc = nn.Linear(e_params.cout_conv1, params.output_channels)
 
     def forward(self, x: torch.Tensor):
-        x = Swish(self.bn0(self.conv0(x)))
+        x = swish(self.bn0(self.conv0(x)))
         x = self.MBBlocks(x)
-        x = Swish(self.bn1(self.conv1(x)))
+        x = swish(self.bn1(self.conv1(x)))
         x = F.adaptive_avg_pool2d(x, (1, 1))
         return self.fc(F.dropout(torch.flatten(x, start_dim=1), self.params.dropout))
 
