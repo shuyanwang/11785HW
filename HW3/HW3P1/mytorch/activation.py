@@ -2,8 +2,8 @@
 # be available to AutoLab and are not needed (or allowed)
 import numpy as np
 
-class Activation(object):
 
+class Activation(object):
     """
     Interface for activation functions (non-linearities).
     """
@@ -20,8 +20,8 @@ class Activation(object):
     def derivative(self):
         raise NotImplemented
 
-class Sigmoid(Activation):
 
+class Sigmoid(Activation):
     """
     Sigmoid activation function
     """
@@ -38,7 +38,6 @@ class Sigmoid(Activation):
 
 
 class Tanh(Activation):
-
     """
     Modified Tanh to work with BPTT.
     The tanh(x) result has to be stored elsewhere otherwise we will
@@ -59,7 +58,6 @@ class Tanh(Activation):
 
     def derivative(self, state=None):
         if state is not None:
-            return 1 - (state**2)
+            return 1 - (state ** 2)
         else:
-            return 1 - (self.state**2)
-
+            return 1 - (self.state ** 2)

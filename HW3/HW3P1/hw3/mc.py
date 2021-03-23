@@ -2,16 +2,16 @@
 
 
 def question_1():
-    raise NotImplementedError
+    return 'b'
 
 
 def question_2():
-    raise NotImplementedError
+    return 'b'
 
 
 def question_3():
-    raise NotImplementedError
+    return 'b'
 
 
 def question_4():
-    raise NotImplementedError
+    return 'a'
