@@ -78,17 +78,6 @@ class RNNPhonemeClassifier(object):
         self.x = x
         self.hiddens.append(hidden.copy())
 
-        ### Add your code here --->
-        # (More specific pseudocode may exist in lecture slides)
-        # Iterate through the sequence
-        #   Iterate over the length of your self.rnn (through the layers)
-        #       Run the rnn cell with the correct parameters and update
-        #       the parameters as needed. Update hidden.
-        #   Similar to above, append a copy of the current hidden array to the hiddens list
-
-        # Get the outputs from the last time step using the linear layer and return it
-        # logits =
-        # <--------------------------
         for t in range(seq_len):
             hidden = np.zeros_like(hidden)
             hidden[0] = self.rnn[0](self.x[:, t, :], self.hiddens[-1][0])
@@ -144,7 +133,16 @@ class RNNPhonemeClassifier(object):
           as parameters of the network (divide by batch size)
 
         """
-        # dh_0 =
-        # return dh_0
 
-        raise NotImplementedError
+        for t in range(seq_len, 0, -1):
+            for layer in range(self.num_layers - 1, 0, -1):
+                dx, d_hidden = self.rnn[layer].backward(dh[layer], self.hiddens[t][layer],
+                                                        self.hiddens[t][layer - 1],
+                                                        self.hiddens[t - 1][layer])
+                dh[layer] = d_hidden
+                dh[layer - 1] += dx
+            dh[0] = self.rnn[0].backward(dh[0], self.hiddens[t][0], self.x[:, t - 1, :],
+                                         self.hiddens[t - 1][0])[1]
+
+        dh_0 = dh / batch_size
+        return dh_0
