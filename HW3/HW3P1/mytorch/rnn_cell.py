@@ -99,19 +99,19 @@ class RNNCell(object):
         # 0) Done! Step backward through the tanh activation function.
         # Note, because of BPTT, we had to externally save the tanh state, and
         # have modified the tanh activation function to accept an optionally input.
-        dz = self.activation.derivative(state=h) * delta
+        dz: np.ndarray = self.activation.derivative(state=h) * delta  # (b,h)
 
         # 1) Compute the averaged gradients of the weights and biases
-        # self.dW_ih +=
-        # self.dW_hh +=
-        # self.db_ih +=
-        # self.db_hh +=
+        self.dW_ih += dz.transpose() @ h_prev_l / batch_size  # (h,d)
+        self.dW_hh += dz.transpose() @ h_prev_t / batch_size  # (h,h)
+        self.db_ih += np.mean(dz, 0)  # (h,)
+        self.db_hh += np.mean(dz, 0)
 
         # 2) Compute dx, dh
-        # dx =
-        # dh =
+        dx = dz @ self.W_ih  # (b,d)
+        dh = dz @ self.W_hh
 
         # 3) Return dx, dh
-        # return dx, dh
+        return dx, dh
 
-        raise NotImplementedError
+        # raise NotImplementedError
