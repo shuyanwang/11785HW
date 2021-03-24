@@ -6,7 +6,6 @@ class RNNCell(object):
     """RNN Cell class."""
 
     def __init__(self, input_size, hidden_size):
-
         self.input_size = input_size
         self.hidden_size = hidden_size
 
@@ -47,7 +46,7 @@ class RNNCell(object):
     def __call__(self, x, h):
         return self.forward(x, h)
 
-    def forward(self, x, h):
+    def forward(self, x: np.ndarray, h: np.ndarray):
         """RNN Cell forward (single time step).
 
         Input (see writeup for explanation)
@@ -64,10 +63,10 @@ class RNNCell(object):
             hidden state at the current time step and current layer
 
         """
-        # h_prime =
-        # return h_prime
 
-        raise NotImplementedError
+        h_prime = self.activation(
+                x @ self.W_ih.transpose() + h @ self.W_hh.transpose() + self.b_ih + self.b_hh)
+        return h_prime
 
     def backward(self, delta, h, h_prev_l, h_prev_t):
         """RNN Cell backward (single time step).
