@@ -87,9 +87,22 @@ class GRUCell(object):
         self.x = x
         self.hidden = h
 
-        # Add your code here.
-        # Define your variables based on the writeup using the corresponding
-        # names below.
+        x = np.expand_dims(x, 1)  # (d, 1)
+        h = np.expand_dims(h, 1)  # (h, 1)
+
+        self.r = self.r_act(
+                self.Wrx @ x + self.bir.reshape((-1, 1)) + self.Wrh @ h + self.bhr.reshape(-1, 1))
+        self.z = self.z_act(
+                self.Wzx @ x + self.biz.reshape((-1, 1)) + self.Wzh @ h + self.bhz.reshape((-1, 1)))
+        self.n = self.h_act(
+                self.Wnx @ x + self.bin.reshape((-1, 1)) + self.r * (
+                            self.Wnh @ h + self.bhn.reshape(-1, 1)))
+        h_t = (1 - self.z) * self.n + self.z * h
+
+        self.r = np.squeeze(self.r)
+        self.z = np.squeeze(self.z)
+        self.n = np.squeeze(self.n)
+        h_t = np.squeeze(h_t)
 
         assert self.x.shape == (self.d,)
         assert self.hidden.shape == (self.h,)
@@ -99,8 +112,7 @@ class GRUCell(object):
         assert self.n.shape == (self.h,)
         assert h_t.shape == (self.h,)
 
-        # return h_t
-        raise NotImplementedError
+        return h_t
 
     def backward(self, delta):
         """GRU cell backward.
