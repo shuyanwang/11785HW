@@ -169,7 +169,7 @@ class GRUCell(object):
         d_n_affine = dn * self.h_act.derivative(n)  # (n,1)
         self.dWnx = d_n_affine @ x
         self.dbin = np.squeeze(d_n_affine)
-        dr = d_n_affine * (self.Wnh @ (np.expand_dims(self.hidden, 1) + self.bhn.reshape(-1, 1)))
+        dr = d_n_affine * (self.Wnh @ (np.expand_dims(self.hidden, 1)) + self.bhn.reshape(-1, 1))
         self.dWnh = d_n_affine * r @ h_prev.transpose()
         self.dbhn = np.squeeze(d_n_affine * r)
 
@@ -191,10 +191,9 @@ class GRUCell(object):
         dx += dr_affine.transpose() @ self.Wrx
 
         dh_prev = np.zeros((1, self.h))
-        dh_prev += z.transpose()
+        dh_prev += (delta * z).transpose()
         dh_prev += (d_n_affine * r).transpose() @ self.Wnh
         dh_prev += dz_affine.transpose() @ self.Wzh
         dh_prev += dr_affine.transpose() @ self.Wrh
 
-        t = 1
         return dx, dh_prev
