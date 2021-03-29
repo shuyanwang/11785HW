@@ -5,7 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/hw3" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/mytorch" isTestSource="false" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.7 (P1)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

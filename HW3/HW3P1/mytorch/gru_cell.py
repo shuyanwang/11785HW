@@ -48,6 +48,12 @@ class GRUCell(object):
         self.z_act = Sigmoid()
         self.h_act = Tanh()
 
+        self.r = None
+        self.z = None
+        self.n = None
+        self.x = None
+        self.hidden = None
+
         # Define other variables to store forward results for backward here
 
     def init_weights(self, Wrx, Wzx, Wnx, Wrh, Wzh, Wnh, bir, biz, bin, bhr, bhz, bhn):
@@ -90,14 +96,14 @@ class GRUCell(object):
         x = np.expand_dims(x, 1)  # (d, 1)
         h = np.expand_dims(h, 1)  # (h, 1)
 
-        a = np.matmul(self.Wrx, x) - self.Wrx @ x
+        # a = np.matmul(self.Wrx, x) - self.Wrx @ x
 
         self.r = self.r_act(
-            self.Wrx @ x + self.bir.reshape((-1, 1)) + self.Wrh @ h + self.bhr.reshape(-1, 1))
+                self.Wrx @ x + self.bir.reshape((-1, 1)) + self.Wrh @ h + self.bhr.reshape(-1, 1))
         self.z = self.z_act(
-            self.Wzx @ x + self.biz.reshape((-1, 1)) + self.Wzh @ h + self.bhz.reshape((-1, 1)))
+                self.Wzx @ x + self.biz.reshape((-1, 1)) + self.Wzh @ h + self.bhz.reshape((-1, 1)))
         self.n = self.h_act(self.Wnx @ x + self.bin.reshape((-1, 1)) + self.r * (
-                    self.Wnh @ h + self.bhn.reshape(-1, 1)))
+                self.Wnh @ h + self.bhn.reshape(-1, 1)))
         h_t = (1 - self.z) * self.n + self.z * h
 
         self.r = np.squeeze(self.r)
@@ -148,8 +154,47 @@ class GRUCell(object):
         # Make sure the shapes of the calculated dWs and dbs  match the
         # initalized shapes accordingly
 
-        assert dx.shape == (1, self.d)
-        assert dh.shape == (1, self.h)
+        delta = np.reshape(delta, (-1, 1))
+        # delta (h,1)
 
-        # return dx, dh
-        raise NotImplementedError
+        r = np.reshape(self.r, (-1, 1))
+        z = np.reshape(self.z, (-1, 1))
+        n = np.reshape(self.n, (-1, 1))
+        h_prev = np.reshape(self.hidden, (-1, 1))
+        x = np.reshape(self.x, (-1, 1)).transpose()  # (1,d)
+
+        dn = delta * (1 - z)
+        dz = delta * (-n + h_prev)
+
+        d_n_affine = dn * self.h_act.derivative(n)  # (n,1)
+        self.dWnx = d_n_affine @ x
+        self.dbin = np.squeeze(d_n_affine)
+        dr = d_n_affine * (self.Wnh @ (np.expand_dims(self.hidden, 1) + self.bhn.reshape(-1, 1)))
+        self.dWnh = d_n_affine * r @ h_prev.transpose()
+        self.dbhn = np.squeeze(d_n_affine * r)
+
+        dz_affine = dz * self.z_act.derivative()
+        self.dWzx = dz_affine @ x
+        self.dbiz = np.squeeze(dz_affine)
+        self.dWzh = dz_affine @ h_prev.transpose()
+        self.dbhz = np.squeeze(dz_affine)
+
+        dr_affine = dr * self.r_act.derivative()
+        self.dWrx = dr_affine @ x
+        self.dbir = np.squeeze(dr_affine)
+        self.dWrh = dr_affine @ h_prev.transpose()
+        self.dbhr = np.squeeze(dr_affine)
+
+        dx = np.zeros((1, self.d))
+        dx += d_n_affine.transpose() @ self.Wnx
+        dx += dz_affine.transpose() @ self.Wzx
+        dx += dr_affine.transpose() @ self.Wrx
+
+        dh_prev = np.zeros((1, self.h))
+        dh_prev += z.transpose()
+        dh_prev += (d_n_affine * r).transpose() @ self.Wnh
+        dh_prev += dz_affine.transpose() @ self.Wzh
+        dh_prev += dr_affine.transpose() @ self.Wrh
+
+        t = 1
+        return dx, dh_prev
