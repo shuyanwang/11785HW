@@ -236,11 +236,11 @@ class HW2ClassificationC(Learning):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=1024, type=int)
+    parser.add_argument('--batch', help='Batch Size', default=128, type=int)
     parser.add_argument('--dropout', default=0.0, type=float)
-    parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--lr', default=0.05, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='EfficientNetB4C', help='Model Name')
+    parser.add_argument('--model', default='ResNet34K3S1RC', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
@@ -252,10 +252,10 @@ def main():
     parser.add_argument('--perspective', action='store_true')
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--loss', default='CrossEntropyCenterLoss')
-    parser.add_argument('--feature_dims', default=1792, type=int)
+    parser.add_argument('--feature_dims', default=512, type=int)
     parser.add_argument('--lambDA', default=0.01, type=float)
     parser.add_argument('--rotate', action='store_true')
-    parser.add_argument('--optimizer', default='Adam')
+    parser.add_argument('--optimizer', default='SGD')
 
     args = parser.parse_args()
 
@@ -281,3 +281,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# --train --flip --erase --perspective
