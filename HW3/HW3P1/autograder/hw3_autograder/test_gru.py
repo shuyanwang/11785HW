@@ -42,7 +42,7 @@ class GRUTest(Test):
         hidden = np.random.randn(hidden_dim)
 
         # Make pytorch rnn cell and get weights
-        pytorch_gru_cell = nn.GRUCell(input_dim, hidden_dim)
+        pytorch_gru_cell = nn.GRUCell(input_dim, hidden_dim).double()
         state_dict = pytorch_gru_cell.state_dict()
         W_ih, W_hh = state_dict["weight_ih"].numpy(), state_dict["weight_hh"].numpy()
         b_ih, b_hh = state_dict["bias_ih"].numpy(), state_dict["bias_hh"].numpy()
@@ -56,8 +56,8 @@ class GRUTest(Test):
         # PyTorch
         pytorch_result = (
             pytorch_gru_cell(
-                torch.FloatTensor(data[idx].reshape(1, -1)),
-                torch.FloatTensor(hidden.reshape(1, -1)),
+                torch.DoubleTensor(data[idx].reshape(1, -1)),
+                torch.DoubleTensor(hidden.reshape(1, -1)),
             )
             .detach()
             .numpy()
@@ -70,6 +70,12 @@ class GRUTest(Test):
             Wrx, Wzx, Wnx, Wrh, Wzh, Wnh, bir, biz, bin, bhr, bhz, bhn
         )
         user_result = user_gru_cell.forward(data[idx], hidden)
+
+        ##
+
+        print(np.sum(np.abs(user_result - pytorch_result)))
+        a = np.abs(user_result - pytorch_result)
+        print(a)
 
         if not self.assertions(user_result, pytorch_result, "type", "h_t"):
             return False

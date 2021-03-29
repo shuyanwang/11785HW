@@ -90,13 +90,14 @@ class GRUCell(object):
         x = np.expand_dims(x, 1)  # (d, 1)
         h = np.expand_dims(h, 1)  # (h, 1)
 
+        a = np.matmul(self.Wrx, x) - self.Wrx @ x
+
         self.r = self.r_act(
-                self.Wrx @ x + self.bir.reshape((-1, 1)) + self.Wrh @ h + self.bhr.reshape(-1, 1))
+            self.Wrx @ x + self.bir.reshape((-1, 1)) + self.Wrh @ h + self.bhr.reshape(-1, 1))
         self.z = self.z_act(
-                self.Wzx @ x + self.biz.reshape((-1, 1)) + self.Wzh @ h + self.bhz.reshape((-1, 1)))
-        self.n = self.h_act(
-                self.Wnx @ x + self.bin.reshape((-1, 1)) + self.r * (
-                            self.Wnh @ h + self.bhn.reshape(-1, 1)))
+            self.Wzx @ x + self.biz.reshape((-1, 1)) + self.Wzh @ h + self.bhz.reshape((-1, 1)))
+        self.n = self.h_act(self.Wnx @ x + self.bin.reshape((-1, 1)) + self.r * (
+                    self.Wnh @ h + self.bhn.reshape(-1, 1)))
         h_t = (1 - self.z) * self.n + self.z * h
 
         self.r = np.squeeze(self.r)
