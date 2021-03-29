@@ -24,7 +24,7 @@ Batch size: 16; dropout: 0.4; learning rate: 1e-3.
 # Verification:
 
 ## Run:
-Please run `python hw2_classification.py --train --flip --erase --perspective`. The rest hyperparameters are set to
+Please run `python hw2_verification_center.py --train --flip --erase --perspective`. The rest hyperparameters are set to
 default in my script.
 
 ## Architecture
@@ -34,3 +34,11 @@ in the `deprecated` folder), including using the same EfficientNetB4 (resized to
 triplet loss; b-way loss; etc. None of them worked as good as the 3x3 kernel-ed ResNet 34.
 
 ## Loss Function and Optimizer:
+
+I used CrossEntropy & center loss for best performance. In this task, SGD performed better than Adam.
+Like I mentioned, I tried b-way loss, pairwise loss, triplet loss, but they did not work well during my tuning.
+
+## Hyperparameters:
+No resize, normalization or rotation. Like the classification task, I used perspective transformation, random horizontal
+flipping, and random erase. Learning rate: 5e-2; the ratio between crossEntropy and center loss: 0.01 (the center loss
+is divided by 100 before adding to the CE loss).

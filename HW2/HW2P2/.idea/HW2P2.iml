@@ -3,7 +3,6 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/deprecated/checkpoints" />
-      <excludeFolder url="file://$MODULE_DIR$/deprecated" />
       <excludeFolder url="file://$MODULE_DIR$/checkpoints" />
     </content>
     <orderEntry type="inheritedJdk" />
