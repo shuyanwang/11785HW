@@ -69,11 +69,31 @@ class CTC(object):
         S, T = len(extSymbols), len(logits)
         alpha = np.zeros(shape=(T, S))
 
-        # -------------------------------------------->
+        alpha[0, 0] = logits[0, extSymbols[0]]
+        alpha[0, 1] = logits[0, extSymbols[1]]
 
-        # Your Code goes here
-        raise NotImplementedError
-        # <---------------------------------------------
+        # for t in range(1, T):
+        #     alpha[t, 0] = alpha[t - 1, 0] + logits[t, extSymbols[0]]
+        #     for i in range(1, S):
+        #         if skipConnect[i]:
+        #             alpha[t, i] = np.log(
+        #                     np.exp(alpha[t - 1, i - 1]) + np.exp(alpha[t - 1, i]) + np.exp(
+        #                             alpha[t - 1, i - 2])) + logits[t, extSymbols[i]]
+        #         else:
+        #             alpha[t, i] = np.log(np.exp(alpha[t - 1, i - 1]) + np.exp(alpha[t - 1,
+        #             i])) + \
+        #                           logits[t, extSymbols[i]]
+        #
+        # return alpha
+
+        for t in range(1, T):
+            alpha[t, 0] = alpha[t - 1, 0] * logits[t, extSymbols[0]]
+            for i in range(1, S):
+                if skipConnect[i]:
+                    alpha[t, i] = alpha[t - 1, i - 1] + alpha[t - 1, i] + alpha[t - 1, i - 2]
+                else:
+                    alpha[t, i] = alpha[t - 1, i - 1] + alpha[t - 1, i]
+                alpha[t, i] *= logits[t, extSymbols[i]]
 
         return alpha
 
@@ -101,11 +121,19 @@ class CTC(object):
         S, T = len(extSymbols), len(logits)
         beta = np.zeros(shape=(T, S))
 
-        # -------------------------------------------->
+        beta[-1, -1] = 1
+        beta[-1, -2] = 1
 
-        # Your Code goes here
-        raise NotImplementedError
-        # <---------------------------------------------
+        for t in range(T - 2, -1, -1):
+            beta[t, -1] = beta[t + 1, -1] * logits[t + 1, extSymbols[-1]]
+            for i in range(S - 2, -1, -1):
+                if i + 2 < S - 1 and skipConnect[i + 2]:
+                    beta[t, i] = beta[t + 1, i] * logits[t + 1, extSymbols[i]] + beta[
+                        t + 1, i + 1] * logits[t + 1, extSymbols[i + 1]] + beta[t + 1, i + 2] * \
+                                 logits[t + 1, extSymbols[i + 2]]
+                else:
+                    beta[t, i] = beta[t + 1, i] * logits[t + 1, extSymbols[i]] + beta[
+                        t + 1, i + 1] * logits[t + 1, extSymbols[i + 1]]
 
         return beta
 
@@ -126,12 +154,19 @@ class CTC(object):
                 posterior probability
 
         """
-        gamma = None
 
-        # -------------------------------------------->
+        # T = alpha.shape[0]
+        # S = alpha.shape[1]
+        # gamma = np.zeros_like(alpha)
+        #
+        # for t in range(T):
+        #     for i in range(S):
+        #         gamma[t, i] = alpha[t, i] * beta[t, i]
+        #     sum_gamma_t = np.sum(gamma[t])
+        #
+        #     gamma[t] /= sum_gamma_t
 
-        # Your Code goes here
-        raise NotImplementedError
-        # <---------------------------------------------
+        gamma = alpha * beta
+        gamma /= np.sum(gamma, axis=1)
 
         return gamma
