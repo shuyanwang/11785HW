@@ -31,16 +31,20 @@ class CTC(object):
                     skip connections
 
         """
-        extSymbols = None
-        skipConnect = None
+        extSymbols = []
+        skipConnect = []
 
-        # -------------------------------------------->
+        for i, item in enumerate(target):
+            extSymbols.append(self.BLANK)
+            skipConnect.append(False)
 
-        # Your Code goes here
-        raise NotImplementedError
-        # <---------------------------------------------
+            extSymbols.append(item)
+            skipConnect.append(i > 0 and target[i] != target[i - 1])
 
-        return extSymbols, skipConnect
+        extSymbols.append(self.BLANK)
+        skipConnect.append(False)
+
+        return np.asarray(extSymbols), np.asarray(skipConnect)
 
     def forwardProb(self, logits, extSymbols, skipConnect):
         """Compute forward probabilities.

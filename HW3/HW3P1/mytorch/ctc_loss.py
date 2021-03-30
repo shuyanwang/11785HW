@@ -81,10 +81,11 @@ class CTCLoss(object):
             # -------------------------------------------->
 
             # Your Code goes here
-            raise NotImplementedError
+            # raise NotImplementedError
+            pass
             # <---------------------------------------------
 
-        return totalLoss
+        return np.mean(totalLoss)
 
     def backward(self):
         """CTC loss backard.
