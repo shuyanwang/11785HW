@@ -198,5 +198,6 @@ class BeamSearchClass:
         for path in scores:
             if scores[path] > max_score:
                 max_path = path
+                max_score = scores[path]
 
         return max_path, scores
