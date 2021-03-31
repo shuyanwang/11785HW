@@ -167,6 +167,6 @@ class CTC(object):
         #     gamma[t] /= sum_gamma_t
 
         gamma = alpha * beta
-        gamma /= np.sum(gamma, axis=1)
+        gamma /= np.sum(gamma, axis=1).reshape((-1, 1))
 
         return gamma

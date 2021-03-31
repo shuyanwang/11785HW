@@ -68,22 +68,14 @@ class CTCLoss(object):
         # <---------------------------------------------
 
         for b in range(B):
-            # -------------------------------------------->
-            # Computing CTC Loss for single batch
-            # Process:
-            #     Extend Sequence with blank ->
-            #     Compute forward probabilities ->
-            #     Compute backward probabilities ->
-            #     Compute posteriors using total probability function
-            #     Compute Expected Divergence and take average on batches
-            # <---------------------------------------------
-
-            # -------------------------------------------->
-
-            # Your Code goes here
-            # raise NotImplementedError
-            pass
-            # <---------------------------------------------
+            ctc = CTC(self.BLANK)
+            logits_b = logits[0:input_lengths[b], b]
+            extSymbols, skipConnect = ctc.targetWithBlank(target[b, 0:target_lengths[b]])
+            alpha = ctc.forwardProb(logits_b, extSymbols, skipConnect)
+            beta = ctc.backwardProb(logits_b, extSymbols, skipConnect)
+            gamma = ctc.postProb(alpha, beta)
+            for r in range(gamma.shape[1]):
+                totalLoss[b] -= np.sum(gamma[0:, r] * np.log(logits_b[:, extSymbols[r]]))
 
         return np.mean(totalLoss)
 
