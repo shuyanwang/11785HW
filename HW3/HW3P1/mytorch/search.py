@@ -26,7 +26,23 @@ def GreedySearch(SymbolSets, y_probs):
     # Follow the pseudocode from lecture to complete greedy search :-)
 
     # return (forward_path, forward_prob)
-    raise NotImplementedError
+    path = []
+    end_with_blank = False
+    p = 1
+    for t in range(y_probs.shape[1]):
+        p *= np.max(y_probs[:, t, 0])
+        index = np.argmax(y_probs[:, t, 0])
+        if index != 0:
+            if end_with_blank:
+                path.append(SymbolSets[index - 1])
+                end_with_blank = False
+            else:
+                if len(path) == 0 or path[-1] != SymbolSets[index - 1]:
+                    path.append(SymbolSets[index - 1])
+        else:
+            end_with_blank = True
+
+    return ''.join(path), p
 
 
 ##############################################################################
