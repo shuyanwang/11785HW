@@ -66,7 +66,7 @@ class CTCLoss(object):
         B, _ = target.shape
         totalLoss = np.zeros(B)
         # <---------------------------------------------
-
+        self.gammas = []
         for b in range(B):
             ctc = CTC(self.BLANK)
             logits_b = logits[0:input_lengths[b], b]
@@ -76,6 +76,8 @@ class CTCLoss(object):
             gamma = ctc.postProb(alpha, beta)
             for r in range(gamma.shape[1]):
                 totalLoss[b] -= np.sum(gamma[0:, r] * np.log(logits_b[:, extSymbols[r]]))
+
+            self.gammas.append(gamma)
 
         return np.mean(totalLoss)
 
@@ -112,14 +114,13 @@ class CTCLoss(object):
         # <---------------------------------------------
 
         for b in range(B):
-            # -------------------------------------------->
-            # Computing CTC Derivative for single batch
-            # <---------------------------------------------
-
-            # -------------------------------------------->
-
-            # Your Code goes here
-            raise NotImplementedError
+            gamma = self.gammas[b]
+            ctc = CTC(self.BLANK)
+            logits_b = self.logits[0:self.input_lengths[b], b]
+            extSymbols, _ = ctc.targetWithBlank(self.target[b, 0:self.target_lengths[b]])
+            for r in range(gamma.shape[1]):
+                dY[0:self.input_lengths[b], b, extSymbols[r]] -= gamma[:, r] / logits_b[:,
+                                                                               extSymbols[r]]
             # <---------------------------------------------
 
         return dY
