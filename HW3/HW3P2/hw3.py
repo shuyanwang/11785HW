@@ -218,7 +218,7 @@ def main():
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
-    parser.add_argument('--save', default=1, type=int, help='Checkpoint interval')
+    parser.add_argument('--save', default=10, type=int, help='Checkpoint interval')
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--bi', action='store_true')
     parser.add_argument('--layer', default=1, type=int)
