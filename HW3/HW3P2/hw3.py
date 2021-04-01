@@ -10,6 +10,7 @@ from utils.phoneme_list import N_PHONEMES, PHONEME_MAP
 from models import *
 
 import argparse
+import Levenshtein
 
 num_workers = 8
 
@@ -127,6 +128,24 @@ class HW3(Learning):
         """
         return self.decoder.decode(torch.transpose(output, 0, 1), lengths)
 
+    @staticmethod
+    def to_str(y, lengths_y):
+        """
+
+        :param y: (B,T)
+        :param lengths_y: (B)
+        :return: [str]
+        """
+        results = []
+        for b, y_b in enumerate(y):
+            chars = []
+            for char in y_b[0:lengths_y[b]]:
+                if char != 0:
+                    chars.append(PHONEME_MAP[char])
+            results.append(''.join(chars))
+
+        return results
+
     def train(self, checkpoint_interval=5):
         if self.train_loader is None:
             self._load_train()
@@ -157,7 +176,7 @@ class HW3(Learning):
 
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
 
-                print('epoch: ', epoch, 'Training Loss: ', "%.5f" % loss_item)
+                print('epoch:', epoch, 'Training Loss:', "%.5f" % loss_item)
 
                 self._validate(epoch)
                 self.model.train()
@@ -175,6 +194,7 @@ class HW3(Learning):
             with torch.no_grad():
                 self.model.eval()
                 total_loss = torch.zeros(1, device=self.device)
+                total_dist = torch.zeros(1, device=self.device)
 
                 for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
@@ -182,15 +202,24 @@ class HW3(Learning):
                     y = batch[2].to(self.device)
                     lengths_y = tuple(batch[3])
 
-                    output, _ = self.model(x, lengths_x)
+                    output, lengths_out = self.model(x, lengths_x)
 
                     loss = self.criterion(output, y, lengths_x, lengths_y)
                     total_loss += loss
 
-                loss_item = total_loss.item() / (i + 1)
-                self.writer.add_scalar('Loss/Validation', loss_item, epoch)
+                    y_strs = HW3.to_str(y, lengths_y)
+                    out_strs = HW3.to_str(output, lengths_out)
 
-                print('epoch: ', epoch, 'Validation Loss: ', "%.5f" % loss_item)
+                    for y_str, out_str in zip(y_strs, out_strs):
+                        total_dist += Levenshtein.distance(y_str, out_str)
+
+                loss_item = total_loss.item() / (i + 1)
+                dist_item = total_dist.item() / (i + 1) / self.params.B
+                self.writer.add_scalar('Loss/Validation', loss_item, epoch)
+                self.writer.add_scalar('Distance/Validation', dist_item, epoch)
+
+                print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
+                      dist_item)
 
     def test(self):
         if self.test_loader is None:
