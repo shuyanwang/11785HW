@@ -13,14 +13,20 @@ num_workers = 4
 
 
 class ParamsHW3(Params):
-    def __init__(self, B, lr, dropout, device, max_epoch=201,
+    def __init__(self, B, lr, dropout, device, conv_size, num_layer, hidden_size, bi, max_epoch=201,
                  data_dir='/home/zongyuez/dldata/HW3'):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=1 + N_PHONEMES,
                          data_dir=data_dir, device=device, input_dims=(40,))
 
-        self.str = 'class_b=' + str(self.B) + 'lr=' + str(
-                self.lr) + '_'  # 'd=' + str(self.dropout)'
+        self.num_layer = num_layer
+        self.hidden_size = hidden_size
+        self.bi = bi
+        self.conv_size = conv_size
+
+        self.str = 'class_b=' + str(self.B) + 'lr=' + str(self.lr) + 'drop=' + str(
+                self.dropout) + 'n=' + str(num_layer) + 'c=' + str(conv_size) + 'h=' + str(
+                hidden_size) + ('Bi' if bi else '')
 
     def __str__(self):
         return self.str
@@ -44,7 +50,7 @@ class TrainSetHW3(torch.utils.data.Dataset):
         self.Y = []
         for y in Y:
             self.Y.append(torch.as_tensor(y, dtype=torch.long))
-            self.lengths_Y.append(y.shape[0])
+            self.lengths_Y.append(len(y))
         self.Y = torch.nn.utils.rnn.pad_sequence(self.Y, batch_first=True)
 
         print(X_path, self.__len__())
@@ -81,7 +87,7 @@ class TestSetHW3(torch.utils.data.Dataset):
 class HW3(Learning):
     def __init__(self, params: ParamsHW3, model):
         super().__init__(params, model, torch.optim.Adam, nn.CTCLoss)
-        self.decoder = CTCBeamDecoder(PHONEME_MAP)
+        self.decoder = CTCBeamDecoder(PHONEME_MAP, log_probs_input=True)
         print(str(self))
 
     def _load_train(self):
@@ -127,7 +133,7 @@ class HW3(Learning):
                     x = batch[0].to(self.device)
                     lengths_x = tuple(batch[1])
                     y = batch[2].to(self.device)
-                    lengths_y = tuple(batch[2])
+                    lengths_y = tuple(batch[3])
 
                     # (T,N,C)
                     output = self.model(x, lengths_x)
@@ -165,16 +171,12 @@ class HW3(Learning):
                     x = batch[0].to(self.device)
                     lengths_x = tuple(batch[1])
                     y = batch[2].to(self.device)
-                    lengths_y = tuple(batch[2])
+                    lengths_y = tuple(batch[3])
 
                     output = self.model(x, lengths_x)
 
                     loss = self.criterion(output, y, lengths_x, lengths_y)
                     total_loss += loss
-
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
 
                 loss_item = total_loss.item() / (i + 1)
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
@@ -208,21 +210,26 @@ class HW3(Learning):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=16, type=int)
-    parser.add_argument('--dropout', default=0.0, type=float)
+    parser.add_argument('--batch', help='Batch Size', default=64, type=int)
+    parser.add_argument('--dropout', default=0.2, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='EfficientNetB4', help='Model Name')
+    parser.add_argument('--model', default='Model1', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--save', default=1, type=int, help='Checkpoint interval')
     parser.add_argument('--load', default='', help='Load Name')
+    parser.add_argument('--bi', action='store_true')
+    parser.add_argument('--layer', default=1, type=int)
+    parser.add_argument('--h', default=128, type=int)
+    parser.add_argument('--c', default=64, type=int)
 
     args = parser.parse_args()
 
     params = ParamsHW3(B=args.batch, dropout=args.dropout, lr=args.lr,
-                       device='cuda:' + args.gpu_id)
+                       device='cuda:' + args.gpu_id, conv_size=args.c,
+                       num_layer=args.layer, hidden_size=args.h, bi=args.bi)
 
     model = eval(args.model + '(params)')
     learner = HW3(params, model)
