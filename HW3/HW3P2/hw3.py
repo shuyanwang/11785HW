@@ -88,10 +88,12 @@ class TestSetHW3(torch.utils.data.Dataset):
 
 class HW3(Learning):
     def __init__(self, params: ParamsHW3, model):
-        super().__init__(params, model, torch.optim.Adam, nn.CTCLoss)
+        super().__init__(params, model, None, nn.CTCLoss)
         self.decoder = CTCBeamDecoder(PHONEME_MAP, log_probs_input=True, num_processes=10,
                                       cutoff_top_n=params.input_dims[0] + 1)
-        # self.decoder = BeamSearchClass(PHONEME_MAP, 10)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params.lr,
+                                          weight_decay=5e-6)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 5, 0.5)
         print(str(self))
 
     def _load_train(self):
@@ -158,6 +160,7 @@ class HW3(Learning):
 
                 self._validate(epoch)
                 self.model.train()
+                self.scheduler.step()
 
                 if epoch % checkpoint_interval == 0:
                     self.save_model(epoch)
@@ -259,7 +262,7 @@ class HW3(Learning):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch', help='Batch Size', default=64, type=int)
-    parser.add_argument('--dropout', default=0.2, type=float)
+    parser.add_argument('--dropout', default=0.5, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
     parser.add_argument('--model', default='Model1', help='Model Name')
