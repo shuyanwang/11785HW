@@ -33,8 +33,8 @@ class Model1(ModelHW3):
         x = torch.transpose(x, 1, 2)
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         x = self.rnn(x)[0]
-        x = nn.utils.rnn.pad_packed_sequence(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
         x = torch.relu(x)
         x = self.linear(x)
         x = torch.log_softmax(x, 2)
-        return x
+        return x, out_lengths

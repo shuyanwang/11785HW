@@ -1,4 +1,6 @@
 import os
+from typing import List, Dict
+
 import torch.utils.data
 from utils.base import *
 from tqdm import tqdm
@@ -13,8 +15,8 @@ num_workers = 4
 
 
 class ParamsHW3(Params):
-    def __init__(self, B, lr, dropout, device, conv_size, num_layer, hidden_size, bi, max_epoch=201,
-                 data_dir='/home/zongyuez/dldata/HW3'):
+    def __init__(self, B, lr, dropout, device, conv_size, num_layer, hidden_size, bi,
+                 max_epoch=20001, data_dir='/home/zongyuez/dldata/HW3'):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=1 + N_PHONEMES,
                          data_dir=data_dir, device=device, input_dims=(40,))
@@ -87,7 +89,9 @@ class TestSetHW3(torch.utils.data.Dataset):
 class HW3(Learning):
     def __init__(self, params: ParamsHW3, model):
         super().__init__(params, model, torch.optim.Adam, nn.CTCLoss)
-        self.decoder = CTCBeamDecoder(PHONEME_MAP, log_probs_input=True)
+        self.decoder = CTCBeamDecoder(PHONEME_MAP, log_probs_input=True, num_processes=10,
+                                      cutoff_top_n=params.input_dims[0] + 1)
+        # self.decoder = BeamSearchClass(PHONEME_MAP, 10)
         print(str(self))
 
     def _load_train(self):
@@ -112,12 +116,13 @@ class HW3(Learning):
                                                        batch_size=self.params.B, shuffle=False,
                                                        pin_memory=True, num_workers=num_workers)
 
-    def decode(self, output):
+    def decode(self, output, lengths):
         """
         :param output: (T,B,42)
+        :param lengths: (B)
         :return:
         """
-        return self.decoder.decode(torch.transpose(output, 0, 1))
+        return self.decoder.decode(torch.transpose(output, 0, 1), lengths)
 
     def train(self, checkpoint_interval=5):
         if self.train_loader is None:
@@ -136,7 +141,7 @@ class HW3(Learning):
                     lengths_y = tuple(batch[3])
 
                     # (T,N,C)
-                    output = self.model(x, lengths_x)
+                    output, _ = self.model(x, lengths_x)
 
                     loss = self.criterion(output, y, lengths_x, lengths_y)
                     total_loss += loss
@@ -173,7 +178,7 @@ class HW3(Learning):
                     y = batch[2].to(self.device)
                     lengths_y = tuple(batch[3])
 
-                    output = self.model(x, lengths_x)
+                    output, _ = self.model(x, lengths_x)
 
                     loss = self.criterion(output, y, lengths_x, lengths_y)
                     total_loss += loss
@@ -197,15 +202,58 @@ class HW3(Learning):
                         lengths = tuple(item[1])
 
                         # (T,N,C)
-                        output = self.model(x, lengths)
-                        decoded = self.decode(output)
+                        output, out_lengths = self.model(x, lengths)
+                        results, _, _, out_lengths = self.decode(output, out_lengths)
 
                         for b in range(x.shape[0]):
                             f.write(str(i * self.params.B + b) + ',')
-                            letters = decoded[0][b, 0, 0:decoded[3][b, 0]]
+                            letters = results[b, 0, 0:out_lengths[b][0]]
                             for letter in letters:
-                                f.write(PHONEME_MAP[letter])
+                                if letter != 0:
+                                    f.write(PHONEME_MAP[letter])
                             f.write('\n')
+
+    # def test(self):
+    #     if self.test_loader is None:
+    #         self._load_test()
+    #
+    #     with open('results/' + str(self) + '.csv', 'w') as f:
+    #         f.write('id,label\n')
+    #         with torch.cuda.device(self.device):
+    #             with torch.no_grad():
+    #                 self.model.eval()
+    #                 for (i, item) in enumerate(tqdm(self.test_loader)):
+    #                     x = item[0].to(self.device)
+    #                     lengths = tuple(item[1])
+    #
+    #                     # (T,N,C)
+    #                     output = self.model(x, lengths)
+    #
+    #                     for b in range(x.shape[0]):
+    #                         f.write(str(i * self.params.B + b) + ',')
+    #                         f.write(greedy_search(PHONEME_MAP, output[:, b, :])[0])
+    #                         f.write('\n')
+
+    # def test(self):
+    #     if self.test_loader is None:
+    #         self._load_test()
+    #
+    #     with open('results/' + str(self) + '.csv', 'w') as f:
+    #         f.write('id,label\n')
+    #         with torch.cuda.device(self.device):
+    #             with torch.no_grad():
+    #                 self.model.eval()
+    #                 for (i, item) in enumerate(tqdm(self.test_loader)):
+    #                     x = item[0].to(self.device)
+    #                     lengths = tuple(item[1])
+    #
+    #                     # (T,N,C)
+    #                     output = self.model(x, lengths)
+    #
+    #                     for b in range(x.shape[0]):
+    #                         f.write(str(i * self.params.B + b) + ',')
+    #                         f.write(self.decode(output[:, b, :])[0])
+    #                         f.write('\n')
 
 
 def main():
@@ -243,6 +291,156 @@ def main():
         learner.train(checkpoint_interval=args.save)
     if args.test:
         learner.test()
+
+
+def greedy_search(symbols, logits):
+    """
+
+    :param symbols:
+    :param logits: (T,42)
+    :return:
+    """
+    path = []
+    end_with_blank = False
+    p = 0
+    for t in range(logits.shape[0]):
+        p += torch.max(logits[t, :])
+        index = torch.argmax(logits[t, :])
+        if index != 0:
+            if end_with_blank:
+                # path.append(symbols[0])
+                path.append(symbols[index])
+                end_with_blank = False
+            else:
+                if len(path) == 0 or path[-1] != symbols[index]:
+                    path.append(symbols[index])
+        else:
+            end_with_blank = True
+
+    return ''.join(path), p
+
+
+class BeamSearchClass:
+    def __init__(self, symbols, k):
+        self.symbols = symbols
+        self.k = k
+
+    def decode(self, logits):
+        self.y_probs = logits
+        self.paths_blank: List[str] = ['']
+        self.paths_blank_score: Dict[str:np.ndarray] = {'': logits[0, 0]}
+
+        self.paths_symbol: List[str] = [c for c in self.symbols]
+        self.paths_symbol_score: Dict[str:np.ndarray] = {}
+        for i, c in enumerate(self.symbols):
+            self.paths_symbol_score[c] = logits[0, i]
+
+        for t in range(1, self.y_probs.shape[0]):
+            self.prune()
+            updated_paths_symbol, updated_paths_symbol_score = self.extend_with_symbol(t)
+            updated_paths_blank, updated_paths_blank_score = self.extend_with_blank(t)
+            self.paths_blank = updated_paths_blank
+            self.paths_symbol = updated_paths_symbol
+            self.paths_blank_score = updated_paths_blank_score
+            self.paths_symbol_score = updated_paths_symbol_score
+
+        return self.merge()
+
+    def extend_with_symbol(self, t):
+        updated_paths_symbol = []
+        updated_paths_symbol_score = {}
+
+        for path in self.paths_blank:
+            for i, c in enumerate(self.symbols):
+                new_path = path + c
+                updated_paths_symbol.append(new_path)
+                updated_paths_symbol_score[new_path] = self.paths_blank_score[path] + self.y_probs[
+                    t, i]
+
+        for path in self.paths_symbol:
+            for i, c in enumerate(self.symbols):
+                new_path = path if c == path[-1] else path + c
+                if new_path in updated_paths_symbol_score:
+                    updated_paths_symbol_score[new_path] += self.paths_symbol_score[path] + \
+                                                            self.y_probs[t, i]
+                else:
+                    updated_paths_symbol_score[new_path] = self.paths_symbol_score[path] + \
+                                                           self.y_probs[t, i]
+                    updated_paths_symbol.append(new_path)
+
+        return updated_paths_symbol, updated_paths_symbol_score
+
+    def extend_with_blank(self, t):
+        updated_paths_blank = []
+        updated_paths_blank_score = {}
+
+        for path in self.paths_blank:
+            updated_paths_blank.append(path)
+            updated_paths_blank_score[path] = self.paths_blank_score[path] + self.y_probs[t, 0]
+
+        for path in self.paths_symbol:
+            if path in updated_paths_blank:
+                updated_paths_blank_score[path] += self.paths_symbol_score[path] + self.y_probs[
+                    t, 0]
+            else:
+                updated_paths_blank_score[path] = self.paths_symbol_score[path] + self.y_probs[t, 0]
+                updated_paths_blank.append(path)
+
+        return updated_paths_blank, updated_paths_blank_score
+
+    def prune(self):
+        updated_paths_blank = []
+        updated_paths_blank_score = {}
+
+        updated_paths_symbol = []
+        updated_paths_symbol_score = {}
+
+        scores = []
+
+        for score in self.paths_blank_score.values():
+            scores.append(score)
+
+        for score in self.paths_symbol_score.values():
+            scores.append(score)
+
+        scores.sort()
+
+        cutoff = scores[-1] if len(scores) < self.k else scores[- self.k]
+
+        for path in self.paths_blank:
+            if self.paths_blank_score[path] >= cutoff:
+                updated_paths_blank.append(path)
+                updated_paths_blank_score[path] = self.paths_blank_score[path]
+
+        for path in self.paths_symbol:
+            if self.paths_symbol_score[path] >= cutoff:
+                updated_paths_symbol.append(path)
+                updated_paths_symbol_score[path] = self.paths_symbol_score[path]
+
+        self.paths_symbol_score = updated_paths_symbol_score
+        self.paths_symbol = updated_paths_symbol
+        self.paths_blank_score = updated_paths_blank_score
+        self.paths_blank = updated_paths_blank
+
+    def merge(self):
+        paths = self.paths_blank
+        scores = self.paths_blank_score
+
+        for path in self.paths_symbol:
+            if path in paths:
+                scores[path] += self.paths_symbol_score[path]
+            else:
+                paths.append(path)
+                scores[path] = self.paths_symbol_score[path]
+
+        max_path = paths[0]
+        max_score = scores[max_path]
+        for path in scores:
+            if scores[path] > max_score:
+                max_path = path
+                max_score = scores[path]
+
+        return max_path, scores
 
 
 if __name__ == '__main__':
