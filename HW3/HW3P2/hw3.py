@@ -207,7 +207,7 @@ class HW3(Learning):
                 total_loss = torch.zeros(1, device=self.device)
                 total_dist = torch.zeros(1, device=self.device)
 
-                for i, batch in enumerate(tqdm(self.valid_loader)):
+                for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
                     lengths_x = tuple(batch[1])
                     y = batch[2].to(self.device)

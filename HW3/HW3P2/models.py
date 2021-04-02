@@ -34,6 +34,9 @@ class Model1(ModelHW3):
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         x = self.rnn(x)[0]
         x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
         x = torch.relu(x)
         x = self.linear(x)
         x = torch.log_softmax(x, 2)
