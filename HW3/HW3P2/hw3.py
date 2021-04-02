@@ -314,7 +314,7 @@ def main():
     parser.add_argument('--layer', default=1, type=int)
     parser.add_argument('--h', default=128, type=int)
     parser.add_argument('--c', default=64, type=int)
-    parser.add_argument('--schedule', default=20, type=int)
+    parser.add_argument('--schedule', default=5, type=int)
 
     args = parser.parse_args()
 
