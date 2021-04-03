@@ -244,7 +244,7 @@ class HW3(Learning):
                     self.model.eval()
                     for (i, item) in enumerate(tqdm(self.test_loader)):
                         x = item[0].to(self.device)
-                        lengths = tuple(item[1])
+                        lengths = item[1]
 
                         # (T,N,C)
                         output, out_lengths = self.model(x, lengths)
@@ -254,48 +254,6 @@ class HW3(Learning):
                             f.write(str(i * self.params.B + b) + ',')
                             f.write(results[b])
                             f.write('\n')
-
-    # def test(self):
-    #     if self.test_loader is None:
-    #         self._load_test()
-    #
-    #     with open('results/' + str(self) + '.csv', 'w') as f:
-    #         f.write('id,label\n')
-    #         with torch.cuda.device(self.device):
-    #             with torch.no_grad():
-    #                 self.model.eval()
-    #                 for (i, item) in enumerate(tqdm(self.test_loader)):
-    #                     x = item[0].to(self.device)
-    #                     lengths = tuple(item[1])
-    #
-    #                     # (T,N,C)
-    #                     output = self.model(x, lengths)
-    #
-    #                     for b in range(x.shape[0]):
-    #                         f.write(str(i * self.params.B + b) + ',')
-    #                         f.write(greedy_search(PHONEME_MAP, output[:, b, :])[0])
-    #                         f.write('\n')
-
-    # def test(self):
-    #     if self.test_loader is None:
-    #         self._load_test()
-    #
-    #     with open('results/' + str(self) + '.csv', 'w') as f:
-    #         f.write('id,label\n')
-    #         with torch.cuda.device(self.device):
-    #             with torch.no_grad():
-    #                 self.model.eval()
-    #                 for (i, item) in enumerate(tqdm(self.test_loader)):
-    #                     x = item[0].to(self.device)
-    #                     lengths = tuple(item[1])
-    #
-    #                     # (T,N,C)
-    #                     output = self.model(x, lengths)
-    #
-    #                     for b in range(x.shape[0]):
-    #                         f.write(str(i * self.params.B + b) + ',')
-    #                         f.write(self.decode(output[:, b, :])[0])
-    #                         f.write('\n')
 
 
 def main():
