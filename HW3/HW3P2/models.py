@@ -765,4 +765,247 @@ class Model12(ModelHW3):
         x = torch.log_softmax(x, 2)
         return x, out_lengths
 
-#### todo: He init for 1D
+
+class ResNetK3S1C64L3Init(nn.Module):
+    def __init__(self, layers, cin):
+        super().__init__()
+
+        self.conv = nn.Conv1d(cin, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn = nn.BatchNorm1d(64)
+        self.pool1 = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+
+        self.cin = 64
+        # The number of channels feeding into the next residual layer
+        # subject to update in residual layers: the proceeding layer takes this value
+
+        residual_layers = [self.residual_layer(64, layers[0], 1),
+                           self.residual_layer(128, layers[1], 1),
+                           self.residual_layer(256, layers[2], 1)]
+
+        self.residual_layers = nn.Sequential(*residual_layers)
+
+        for module in self.modules():
+            if isinstance(module, nn.Conv1d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(module, nn.BatchNorm1d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+
+    def residual_layer(self, cout, num_blocks, stride):
+
+        if num_blocks == 0:
+            return nn.Identity()
+
+        layers = [ResBlock(self.cin, cout, stride, stride > 1 or self.cin != cout)]
+        self.cin = cout
+        for _ in range(1, num_blocks):
+            layers.append(ResBlock(self.cin, cout))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        :param x:
+        :return: If embedding, return the flattened feature vector
+        """
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        x = self.residual_layers(x)
+
+        return x
+
+
+class Model13(ModelHW3):
+    def __init__(self, params):
+        super().__init__(params)
+        self.conv1 = ResNetK3S1C64L3Init([2, 2, 2], params.input_dims[0])
+
+        self.rnn = nn.GRU(256, params.hidden_size, params.num_layer,
+                          batch_first=True,
+                          dropout=params.dropout, bidirectional=params.bi)
+        self.linear = nn.Linear(params.hidden_size, params.output_channels)
+
+    def forward(self, x: torch.Tensor, lengths):
+        x = self.conv1(torch.transpose(x, 1, 2))
+        x = torch.relu(x)
+        x = torch.transpose(x, 1, 2)  # (B,T,C)
+
+        lengths = torch.div(lengths, 2, rounding_mode='floor').long()
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
+        x = torch.relu(x)
+        x = self.linear(x)
+        x = torch.log_softmax(x, 2)
+        return x, out_lengths
+
+
+class ResNet2DFC(nn.Module):
+    def __init__(self, layers, cin):
+        super().__init__()
+
+        self.conv = nn.Conv2d(cin, 64, kernel_size=(41, 11), stride=(2, 2), padding=(20, 0),
+                              bias=False)
+        self.bn = nn.BatchNorm2d(64)
+        self.pool1 = nn.MaxPool2d(kernel_size=3, stride=(2, 2), padding=(1, 1))
+
+        self.cin = 64
+        # The number of channels feeding into the next residual layer
+        # subject to update in residual layers: the proceeding layer takes this value
+
+        residual_layers = [self.residual_layer(64, layers[0], 1),
+                           self.residual_layer(128, layers[1], 1),
+                           self.residual_layer(256, layers[2], 1),
+                           self.residual_layer(512, layers[3], 1)]
+
+        self.residual_layers = nn.Sequential(*residual_layers)
+
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(module, nn.BatchNorm2d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+
+    def residual_layer(self, cout, num_blocks, stride):
+
+        if num_blocks == 0:
+            return nn.Identity()
+
+        layers = [ResBlock2D(self.cin, cout, stride, stride > 1 or self.cin != cout)]
+        self.cin = cout
+        for _ in range(1, num_blocks):
+            layers.append(ResBlock2D(self.cin, cout))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        :param x: (B,1,T,C)
+        :return: If embedding, return the flattened feature vector
+        """
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        x = self.residual_layers(x)
+
+        return x
+
+
+class Model14(ModelHW3):
+    def __init__(self, params):
+        super().__init__(params)
+        self.conv1 = ResNet2DFC([2, 2, 2, 2], 1)
+        self.fc1 = nn.Linear(512 * 8, params.conv_size)
+
+        self.rnn = nn.GRU(params.conv_size, params.hidden_size, params.num_layer,
+                          batch_first=True,
+                          dropout=params.dropout, bidirectional=params.bi)
+        self.linear = nn.Linear(params.hidden_size, params.output_channels)
+
+    def forward(self, x: torch.Tensor, lengths):
+        # x: (B,T,C)
+        x = torch.unsqueeze(x, 1)  # (B,1,T,C)
+        x = self.conv1(x)
+        x = torch.relu(x)  # (B,D,T,C)
+        x = torch.transpose(x, 1, 2)  # (B,T,D,C)
+        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))  # (B,T,D * C)
+        x = self.fc1(x)
+
+        lengths = torch.div(lengths, 4, rounding_mode='floor').long()
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
+        x = torch.relu(x)
+        x = self.linear(x)
+        x = torch.log_softmax(x, 2)
+        return x, out_lengths
+
+
+class ResNet2DFC2(nn.Module):
+    def __init__(self, layers, cin):
+        super().__init__()
+
+        self.conv = nn.Conv2d(cin, 64, kernel_size=(41, 11), stride=(2, 2), padding=(20, 0),
+                              bias=False)
+        self.bn = nn.BatchNorm2d(64)
+        self.pool1 = nn.MaxPool2d(kernel_size=3, stride=(2, 2), padding=(1, 1))
+
+        self.cin = 64
+        # The number of channels feeding into the next residual layer
+        # subject to update in residual layers: the proceeding layer takes this value
+
+        residual_layers = [self.residual_layer(64, layers[0], 1),
+                           self.residual_layer(128, layers[1], 2),
+                           self.residual_layer(256, layers[2], 2),
+                           self.residual_layer(512, layers[3], 2)]
+
+        self.residual_layers = nn.Sequential(*residual_layers)
+
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(module, nn.BatchNorm2d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+
+    def residual_layer(self, cout, num_blocks, stride):
+
+        if num_blocks == 0:
+            return nn.Identity()
+
+        layers = [ResBlock2D(self.cin, cout, stride, stride > 1 or self.cin != cout)]
+        self.cin = cout
+        for _ in range(1, num_blocks):
+            layers.append(ResBlock2D(self.cin, cout))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        :param x: (B,1,T,C)
+        :return: If embedding, return the flattened feature vector
+        """
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        x = self.residual_layers(x)
+
+        return x
+
+
+class Model15(ModelHW3):
+    def __init__(self, params):
+        super().__init__(params)
+        self.conv1 = ResNet2DFC2([2, 2, 2, 2], 1)
+        self.fc1 = nn.Linear(512, params.conv_size)
+
+        self.rnn = nn.GRU(params.conv_size, params.hidden_size, params.num_layer,
+                          batch_first=True,
+                          dropout=params.dropout, bidirectional=params.bi)
+        self.linear = nn.Linear(params.hidden_size, params.output_channels)
+
+    def forward(self, x: torch.Tensor, lengths):
+        # x: (B,T,C)
+        x = torch.unsqueeze(x, 1)  # (B,1,T,C)
+        x = self.conv1(x)
+        x = torch.relu(x)  # (B,D,T,C)
+        x = torch.transpose(x, 1, 2)  # (B,T,D,C)
+        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))  # (B,T,D * C)
+        x = self.fc1(x)
+
+        lengths = torch.div(lengths, 32, rounding_mode='floor').long()
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
+        x = torch.relu(x)
+        x = self.linear(x)
+        x = torch.log_softmax(x, 2)
+        return x, out_lengths
