@@ -156,7 +156,7 @@ class HW3(Learning):
         return results
 
     def train(self, checkpoint_interval=5):
-        self._validate(0)
+        # self._validate(0)
 
         if self.train_loader is None:
             self._load_train()
