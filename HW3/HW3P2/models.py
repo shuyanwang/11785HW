@@ -1009,3 +1009,57 @@ class Model15(ModelHW3):
         x = self.linear(x)
         x = torch.log_softmax(x, 2)
         return x, out_lengths
+
+
+class LayerResBlock(nn.Module):
+    def __init__(self):
+        super(LayerResBlock, self).__init__()
+        self.norm = nn.LayerNorm(20)
+        self.gelu = nn.GELU()
+        self.drop = nn.Dropout(0.2)
+        self.conv = nn.Conv2d(32, 32, (3, 3), padding=(1, 1))
+
+    def forward(self, x):
+        y = self.drop(self.gelu(self.norm(x)))
+        return x + self.conv(y)
+
+
+class Model16(ModelHW3):
+    def __init__(self, params):
+        super().__init__(params)
+        self.conv1 = nn.Conv2d(1, 32, (3, 3), stride=(2, 2), padding=(1, 1))
+        self.res_blocks = nn.Sequential(*[LayerResBlock() for _ in range(7)])
+        self.fc1 = nn.Linear(32 * 20, self.params.conv_size)
+
+        self.rnn = nn.GRU(params.conv_size, params.hidden_size, params.num_layer,
+                          batch_first=True,
+                          dropout=params.dropout, bidirectional=params.bi)
+        self.fc2 = nn.Linear(params.hidden_size, 128)
+        self.drop = nn.Dropout(params.dropout)
+        self.fc3 = nn.Linear(128, params.output_channels)
+
+    def forward(self, x: torch.Tensor, lengths):
+        # x: (B,T,C)
+        x = torch.unsqueeze(x, 1)  # (B,1,T,C)
+        x = self.conv1(x)  # (B,D,T,C)
+        x = torch.relu(x)  # (B,D,T,C)
+        x = self.res_blocks(x)  # (B,D,T,C)
+        x = torch.transpose(x, 1, 2)  # (B,T,D,C)
+        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))  # (B,T,D * C)
+        x = self.fc1(x)  # (B.T,Conv_size)
+
+        lengths = torch.div(lengths, 2, rounding_mode='floor').long()
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
+        x = torch.relu(x)
+        x = self.fc2(x)
+        x = torch.relu(x)
+        x = self.drop(x)
+        x = self.fc3(x)
+        x = torch.log_softmax(x, 2)
+        return x, out_lengths
