@@ -168,6 +168,55 @@ class ResNetK3S1(nn.Module):
         return x
 
 
+class ResNetK3S1C64(nn.Module):
+    def __init__(self, layers, cin):
+        super().__init__()
+
+        self.conv = nn.Conv1d(cin, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn = nn.BatchNorm1d(64)
+        self.pool1 = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+
+        self.cin = 64
+        # The number of channels feeding into the next residual layer
+        # subject to update in residual layers: the proceeding layer takes this value
+
+        residual_layers = [self.residual_layer(64, layers[0], 1),
+                           self.residual_layer(128, layers[1], 1),
+                           self.residual_layer(256, layers[2], 1),
+                           self.residual_layer(512, layers[3], 1)]
+
+        self.residual_layers = nn.Sequential(*residual_layers)
+
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(module, nn.BatchNorm2d):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+
+    def residual_layer(self, cout, num_blocks, stride):
+
+        if num_blocks == 0:
+            return nn.Identity()
+
+        layers = [ResBlock(self.cin, cout, stride, stride > 1 or self.cin != cout)]
+        self.cin = cout
+        for _ in range(1, num_blocks):
+            layers.append(ResBlock(self.cin, cout))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        :param x:
+        :return: If embedding, return the flattened feature vector
+        """
+        x = self.pool1(torch.relu(self.bn(self.conv(x))))
+        x = self.residual_layers(x)
+
+        return x
+
+
 class ResNet10(Model):
     def __init__(self, params):
         super().__init__(params)
@@ -215,6 +264,38 @@ class Model5(ModelHW3):
         self.conv1 = ResNetK3S1([3, 4, 6, 3], params.input_dims[0])
 
         self.rnn = nn.GRU(256, params.hidden_size, params.num_layer,
+                          batch_first=True,
+                          dropout=params.dropout, bidirectional=params.bi)
+        self.linear = nn.Linear(params.hidden_size, params.output_channels)
+
+    def forward(self, x: torch.Tensor, lengths):
+        x = self.conv1(torch.transpose(x, 1, 2))
+        x = torch.relu(x)
+        x = torch.transpose(x, 1, 2)  # (B,T,C)
+        # print(torch.max(lengths))
+        # for (x_i, l_i) in zip(x, lengths):
+        #     print(x_i.shape[0], l_i)
+
+        lengths = torch.div(lengths, 2, rounding_mode='floor').long()
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
+        x = torch.relu(x)
+        x = self.linear(x)
+        x = torch.log_softmax(x, 2)
+        return x, out_lengths
+
+
+class Model6(ModelHW3):
+    def __init__(self, params):
+        super().__init__(params)
+        self.conv1 = ResNetK3S1C64([2, 2, 2, 2], params.input_dims[0])
+
+        self.rnn = nn.GRU(512, params.hidden_size, params.num_layer,
                           batch_first=True,
                           dropout=params.dropout, bidirectional=params.bi)
         self.linear = nn.Linear(params.hidden_size, params.output_channels)

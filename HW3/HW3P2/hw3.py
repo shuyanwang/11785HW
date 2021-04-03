@@ -17,7 +17,7 @@ num_workers = 8
 
 class ParamsHW3(Params):
     def __init__(self, B, lr, dropout, device, conv_size, num_layer, hidden_size, bi, schedule_int,
-                 max_epoch=20001, data_dir='/home/zongyuez/dldata/HW3'):
+                 decay, optimizer, max_epoch=20001, data_dir='/home/zongyuez/dldata/HW3'):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=1 + N_PHONEMES,
                          data_dir=data_dir, device=device, input_dims=(40,))
@@ -27,10 +27,13 @@ class ParamsHW3(Params):
         self.bi = bi
         self.conv_size = conv_size
         self.schedule = schedule_int
+        self.decay = decay
+        self.optimizer = optimizer
 
-        self.str = 'class_b=' + str(self.B) + 'lr=' + str(self.lr) + 's' + str(schedule_int) \
-                   + 'drop=' + str(self.dropout) + 'n=' + str(num_layer) + 'c=' + str(
-                conv_size) + 'h=' + str(hidden_size) + ('Bi' if bi else '')
+        self.str = 'class_b' + str(self.B) + 'lr' + str(self.lr) + 's' + str(
+                schedule_int) + 'decay' + str(decay) + optimizer + 'drop' + str(
+                self.dropout) + 'layer' + str(num_layer) + 'h' + str(hidden_size) + (
+                       'Bi' if bi else '')
 
     def __str__(self):
         return self.str
@@ -93,8 +96,9 @@ class HW3(Learning):
         super().__init__(params, model, None, nn.CTCLoss)
         self.decoder = CTCBeamDecoder(PHONEME_MAP, log_probs_input=True, num_processes=10,
                                       cutoff_top_n=params.input_dims[0] + 1)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params.lr,
-                                          weight_decay=5e-6)
+        optimizer = eval('torch.optim.' + params.optimizer)
+        self.optimizer = optimizer(self.model.parameters(), lr=self.params.lr,
+                                   weight_decay=self.params.decay)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.params.schedule, 0.5)
         print(str(self))
 
@@ -273,13 +277,15 @@ def main():
     parser.add_argument('--h', default=128, type=int)
     parser.add_argument('--c', default=64, type=int)
     parser.add_argument('--schedule', default=5, type=int)
+    parser.add_argument('--decay', default=5e-6, type=float)
+    parser.add_argument('--optimizer', default='Adam')
 
     args = parser.parse_args()
 
     params = ParamsHW3(B=args.batch, dropout=args.dropout, lr=args.lr,
                        device='cuda:' + args.gpu_id, conv_size=args.c,
                        num_layer=args.layer, hidden_size=args.h, bi=args.bi,
-                       schedule_int=args.schedule)
+                       schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer)
 
     model = eval(args.model + '(params)')
     learner = HW3(params, model)
