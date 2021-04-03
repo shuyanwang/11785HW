@@ -207,3 +207,35 @@ class Model4(ModelHW3):
         x = self.linear(x)
         x = torch.log_softmax(x, 2)
         return x, out_lengths
+
+
+class Model5(ModelHW3):
+    def __init__(self, params):
+        super().__init__(params)
+        self.conv1 = ResNetK3S1([3, 4, 6, 3], params.input_dims[0])
+
+        self.rnn = nn.GRU(256, params.hidden_size, params.num_layer,
+                          batch_first=True,
+                          dropout=params.dropout, bidirectional=params.bi)
+        self.linear = nn.Linear(params.hidden_size, params.output_channels)
+
+    def forward(self, x: torch.Tensor, lengths):
+        x = self.conv1(torch.transpose(x, 1, 2))
+        x = torch.relu(x)
+        x = torch.transpose(x, 1, 2)  # (B,T,C)
+        # print(torch.max(lengths))
+        # for (x_i, l_i) in zip(x, lengths):
+        #     print(x_i.shape[0], l_i)
+
+        lengths = torch.div(lengths, 2, rounding_mode='floor').long()
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+        x, out_lengths = nn.utils.rnn.pad_packed_sequence(x)
+        if self.params.bi:
+            x = x[:, :, :self.params.hidden_size] + x[:, :, self.params.hidden_size:]
+
+        x = torch.relu(x)
+        x = self.linear(x)
+        x = torch.log_softmax(x, 2)
+        return x, out_lengths
