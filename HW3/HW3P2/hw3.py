@@ -8,6 +8,7 @@ import numpy as np
 from ctcdecode import CTCBeamDecoder
 from utils.phoneme_list import N_PHONEMES, PHONEME_MAP
 from models import *
+from torchinfo import summary
 
 import argparse
 import Levenshtein
@@ -161,7 +162,7 @@ class HW3(Learning):
 
     def train(self, checkpoint_interval=5):
         # self._validate(0)
-
+        summary_flag = True
         if self.train_loader is None:
             self._load_train()
 
@@ -176,6 +177,11 @@ class HW3(Learning):
                     lengths_x = batch[1]
                     y = batch[2].to(self.device)
                     lengths_y = batch[3]
+
+                    if summary_flag:
+                        summary(self.model, input_data=[x, lengths_x], depth=6,
+                                device=self.params.device)
+                        summary_flag = False
 
                     # (T,N,C)
                     output, lengths_out = self.model(x, lengths_x)

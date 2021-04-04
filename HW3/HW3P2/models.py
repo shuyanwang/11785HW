@@ -385,7 +385,7 @@ class Model7(ModelHW3):
         x = torch.relu(x)
         x = torch.transpose(x, 1, 2)  # (B,T,C)
 
-        lengths = torch.div(lengths, 2, rounding_mode='floor').long()
+        lengths = torch.div(lengths, 2, rounding_mode='floor').long().cpu()
 
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         x = self.rnn(x)[0]
@@ -1034,9 +1034,7 @@ class Model16(ModelHW3):
         self.rnn = nn.GRU(params.conv_size, params.hidden_size, params.num_layer,
                           batch_first=True,
                           dropout=params.dropout, bidirectional=params.bi)
-        self.fc2 = nn.Linear(params.hidden_size, 128)
-        self.drop = nn.Dropout(params.dropout)
-        self.fc3 = nn.Linear(128, params.output_channels)
+        self.fc2 = nn.Linear(params.hidden_size, params.output_channels)
 
     def forward(self, x: torch.Tensor, lengths):
         # x: (B,T,C)
@@ -1048,7 +1046,7 @@ class Model16(ModelHW3):
         x = torch.reshape(x, (x.shape[0], x.shape[1], -1))  # (B,T,D * C)
         x = self.fc1(x)  # (B.T,Conv_size)
 
-        lengths = torch.div(lengths, 2, rounding_mode='floor').long()
+        lengths = torch.div(lengths, 2, rounding_mode='floor').long().cpu()
 
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         x = self.rnn(x)[0]
@@ -1058,8 +1056,5 @@ class Model16(ModelHW3):
 
         x = torch.relu(x)
         x = self.fc2(x)
-        x = torch.relu(x)
-        x = self.drop(x)
-        x = self.fc3(x)
         x = torch.log_softmax(x, 2)
         return x, out_lengths
