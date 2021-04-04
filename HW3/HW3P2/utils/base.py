@@ -114,8 +114,6 @@ class Learning(ABC):
         if criterion_handle is not None:
             self.criterion = criterion_handle().cuda(self.device)
 
-        self.scheduler = None
-
         self.init_epoch = 0
 
     def __del__(self):
@@ -137,8 +135,7 @@ class Learning(ABC):
     def _load_test(self):
         pass
 
-    def load_model(self, epoch=20, name=None, model=True, optimizer=True, loss=True,
-                   scheduler=True):
+    def load_model(self, epoch=20, name=None, model=True, optimizer=True, loss=True):
         if name is None:
             loaded = torch.load('checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar',
                                 map_location=self.device)
@@ -154,19 +151,13 @@ class Learning(ABC):
             if 'loss_state_dict' in loaded:
                 self.criterion.load_state_dict(loaded['loss_state_dict'], strict=False)
 
-        if scheduler and 'scheduler_state_dict' in loaded:
-            self.scheduler.load_state_dict(loaded['scheduler_state_dict'])
-
     def save_model(self, epoch):
-        items = {
+        torch.save({
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss_state_dict': self.criterion.state_dict(),
-        }
-        if self.scheduler is not None:
-            items['scheduler_state_dict'] = self.scheduler.state_dict()
-        torch.save(items, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
+        }, 'checkpoints/' + str(self) + 'e=' + str(epoch) + '.tar')
 
     def train(self, checkpoint_interval=5):
         if self.train_loader is None:
