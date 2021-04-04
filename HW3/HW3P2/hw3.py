@@ -179,7 +179,7 @@ class HW3(Learning):
                     lengths_y = batch[3]
 
                     if summary_flag:
-                        summary(self.model, input_data=[x, lengths_x], depth=6,
+                        summary(self.model, input_data=[x, lengths_x], depth=12,
                                 device=self.params.device)
                         summary_flag = False
 
