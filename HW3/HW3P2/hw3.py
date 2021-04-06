@@ -31,7 +31,7 @@ class ParamsHW3(Params):
         self.decay = decay
         self.optimizer = optimizer
 
-        self.str = 'class_b' + str(self.B) + 'lr' + str(self.lr) + 's' + str(
+        self.str = 'b' + str(self.B) + 'lr' + str(self.lr) + 's' + str(
                 schedule_int) + 'decay' + str(decay) + optimizer + 'drop' + str(
                 self.dropout) + 'layer' + str(num_layer) + 'h' + str(hidden_size) + (
                        'Bi' if bi else '')
