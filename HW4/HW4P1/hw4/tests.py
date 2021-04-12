@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def log_softmax(x, axis):
     ret = x - np.max(x, axis=axis, keepdims=True)
     lsm = np.log(np.sum(np.exp(ret), axis=axis, keepdims=True))
@@ -15,6 +16,7 @@ def test_prediction(out, targ):
     nlls = out[np.arange(out.shape[0]), targ]
     nll = -np.mean(nlls)
     return nll
+
 
 def test_generation(inp, pred, vocab):
     outputs = u""
