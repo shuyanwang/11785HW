@@ -6,6 +6,10 @@ def main():
     b = np.load('../dataset/wiki.train.npy', allow_pickle=True)  # [[int,...],...]
     t = 1
 
+    c = np.concatenate(b)
+
+    D = 1
+
 
 if __name__ == '__main__':
     main()
