@@ -57,28 +57,25 @@ class LanguageModelSet(Dataset):
 
 class LanguageModelDataLoader(DataLoader):
     """
-        TODO: Define data loader logic here
     """
 
     def __init__(self, dataset, batch_size, shuffle=True):
-        super(LanguageModelDataLoader, self).__init__(LanguageModelSet(dataset), batch_size,
-                                                      shuffle)
-
-    # def __iter__(self):
-    #     # concatenate your articles and build into batches
-    #
-    #     raise NotImplemented
+        if isinstance(dataset, LanguageModelSet):
+            super(LanguageModelDataLoader, self).__init__(dataset, batch_size,
+                                                          shuffle)
+        else:
+            super(LanguageModelDataLoader, self).__init__(LanguageModelSet(dataset), batch_size,
+                                                          shuffle)
 
 
 # %%
 
-# model
 
 class LockedDropOut(nn.Module):
     def __init__(self, p, batch_dim=0):
         super().__init__()
         self.keep = 1 - p
-        self.batch_dim = 0
+        self.batch_dim = batch_dim
 
     def forward(self, x):
         """
@@ -99,6 +96,15 @@ class LockedDropOut(nn.Module):
         return mask * x
 
 
+# class LockedDropOut(nn.Module):
+#     def __init__(self, p):
+#         super(LockedDropOut, self).__init__()
+#         self.d = nn.Dropout(p)
+#
+#     def forward(self, x):
+#         return self.d(x)
+
+
 class LanguageModel(nn.Module):
     def __init__(self, vocab_size):
         super(LanguageModel, self).__init__()
@@ -106,11 +112,11 @@ class LanguageModel(nn.Module):
         self.embedding = nn.Embedding(vocab_size, 400)
 
         self.d0 = LockedDropOut(0.65)
-        self.r1 = nn.LSTM(input_size=400, hidden_size=1150, num_layers=1, batch_first=True)
+        self.r1 = nn.LSTM(input_size=400, hidden_size=1150)
         self.d1 = LockedDropOut(0.3)
-        self.r2 = nn.LSTM(1150, 1150, batch_first=True)
+        self.r2 = nn.LSTM(1150, 1150)
         self.d2 = LockedDropOut(0.3)
-        self.r3 = nn.LSTM(1150, 400, batch_first=True)
+        self.r3 = nn.LSTM(1150, 400)
         self.d3 = LockedDropOut(0.4)
 
         self.linear = nn.Linear(400, vocab_size)
@@ -127,14 +133,17 @@ class LanguageModel(nn.Module):
 
         x = self.embedding(x)
 
-        # print(x.shape)
+        # (B,SEQ,EMBEDDING)
+        x = torch.transpose(x, 0, 1)
+        # (T,B,Embedding)
 
         x = self.r1(self.d0(x))[0]
         x = self.r2(self.d1(x))[0]
         x = self.r3(self.d2(x))[0]
         x = self.d3(x)
-        x = self.linear(x)
+        x = self.linear(x)  # (T,B,E)
 
+        x = torch.transpose(x, 0, 1)
         return torch.transpose(x, 1, 2)  # B, ENCODING, SEQ
 
 
@@ -162,8 +171,7 @@ class LanguageModelTrainer:
         self.max_epochs = max_epochs
         self.run_id = run_id
 
-        # TODO: Define your optimizer and criterion here
-        self.optimizer = torch.optim.SGD(self.model.parameters(), 0.01, momentum=0.9)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
         self.criterion = nn.CrossEntropyLoss().cuda()
 
     def train(self):
@@ -175,14 +183,10 @@ class LanguageModelTrainer:
         epoch_loss = epoch_loss / (batch_num + 1)
         self.epochs += 1
         print('[TRAIN]  Epoch [%d/%d]   Loss: %.4f'
-              % (self.epochs + 1, self.max_epochs, epoch_loss))
+              % (self.epochs, self.max_epochs, epoch_loss))
         self.train_losses.append(epoch_loss)
 
     def train_batch(self, inputs, targets):
-        """
-            TODO: Define code for training a single batch of inputs
-
-        """
         output = self.model(inputs.to(device))
         # print(output.shape)
         # print(targets.shape)
@@ -220,7 +224,7 @@ class LanguageModelTrainer:
         self.predictions_test.append(predictions_test)
 
         print('[VAL]  Epoch [%d/%d]   Loss: %.4f'
-              % (self.epochs + 1, self.max_epochs, nll))
+              % (self.epochs, self.max_epochs, nll))
         return nll
 
     def save(self):
@@ -231,11 +235,13 @@ class LanguageModelTrainer:
         np.save(os.path.join('experiments', self.run_id, 'predictions-{}.npy'.format(self.epochs)),
                 self.predictions[-1])
         np.save(
-            os.path.join('experiments', self.run_id, 'predictions-test-{}.npy'.format(self.epochs)),
-            self.predictions_test[-1])
+                os.path.join('experiments', self.run_id,
+                             'predictions-test-{}.npy'.format(self.epochs)),
+                self.predictions_test[-1])
         np.save(
-            os.path.join('experiments', self.run_id, 'generated_logits-{}.npy'.format(self.epochs)),
-            self.generated_logits[-1])
+                os.path.join('experiments', self.run_id,
+                             'generated_logits-{}.npy'.format(self.epochs)),
+                self.generated_logits[-1])
         np.save(os.path.join('experiments', self.run_id,
                              'generated_logits-test-{}.npy'.format(self.epochs)),
                 self.generated_logits_test[-1])
@@ -252,13 +258,6 @@ class LanguageModelTrainer:
 class TestLanguageModel:
     @staticmethod
     def prediction(inp, model):
-        """
-            TODO: write prediction code here
-
-            :param inp:
-            :return: a np.ndarray of logits
-        """
-
         inp = torch.from_numpy(inp)
         inp = inp.to(device)
 
@@ -267,7 +266,6 @@ class TestLanguageModel:
     @staticmethod
     def generation(inp, forward, model):
         """
-            TODO: write generation code here
 
             Generate a sequence of words given a starting sequence.
             :param inp: Initial sequence of words (batch size, length)
@@ -275,7 +273,7 @@ class TestLanguageModel:
             :return: generated words (batch size, forward)
         """
 
-        inp = torch.from_numpy(inp)
+        inp = torch.from_numpy(inp)  # (B,S)
         inp = inp.to(device)
 
         result = torch.zeros((inp.shape[0], forward), device=inp.device, dtype=torch.long)
@@ -283,19 +281,18 @@ class TestLanguageModel:
         # res = model(inp)[:, :, -1]
         # print(res.shape)
 
-        result[:, 0] = torch.argmax(model(inp)[:, :, -1], 1)
+        result[:, 0] = torch.argmax(model(inp)[:, :, -1], 1)  # (B,)
         for i in range(1, forward):
-            result[:, i] = torch.argmax(model(torch.unsqueeze(result[:, i - 1], 1))[:, :, -1], 1)
+            inp = torch.cat((inp, torch.unsqueeze(result[:, i - 1], 1)), dim=1)
+            result[:, i] = torch.argmax(model(inp)[:, :, -1], 1)
 
         return result.cpu().detach().numpy()
 
 
 # %%
 
-# TODO: define other hyperparameters here
-
 NUM_EPOCHS = 6
-BATCH_SIZE = 80
+BATCH_SIZE = 500
 
 # %%
 
@@ -307,9 +304,9 @@ print("Saving models, predictions, and generated words to ./experiments/%s" % ru
 
 # %%
 
-model = LanguageModel(len(vocab))
-
-loader = LanguageModelDataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
+model = LanguageModel(vocab.shape[0])
+dataset_torch = LanguageModelSet(dataset)
+loader = LanguageModelDataLoader(dataset=dataset_torch, batch_size=BATCH_SIZE, shuffle=True)
 trainer = LanguageModelTrainer(model=model, loader=loader, max_epochs=NUM_EPOCHS, run_id=run_id)
 
 # %%
@@ -321,7 +318,7 @@ for epoch in range(NUM_EPOCHS):
     if nll < best_nll:
         best_nll = nll
         print("Saving model, predictions and generated output for epoch " + str(
-            epoch) + " with NLL: " + str(best_nll))
+                epoch) + " with NLL: " + str(best_nll))
         trainer.save()
 
 # %%
