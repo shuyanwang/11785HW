@@ -131,7 +131,7 @@ class LanguageModel(nn.Module):
         ####
 
         self.linear = nn.Linear(400, vocab_size)
-        self.linear.weight = self.embedding.weight
+        # self.linear.weight = self.embedding.weight
 
         for weight in self.parameters():
             nn.init.uniform_(weight, -1 / np.sqrt(1150), 1 / np.sqrt(1150))
@@ -182,7 +182,7 @@ class LanguageModelTrainer:
         self.max_epochs = max_epochs
         self.run_id = run_id
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1)
         self.criterion = nn.CrossEntropyLoss().cuda()
 
     def train(self):
@@ -214,6 +214,14 @@ class LanguageModelTrainer:
         predictions = TestLanguageModel.prediction(fixtures_pred['inp'],
                                                    self.model)  # get predictions
         self.predictions.append(predictions)
+
+        # ####
+        #
+        # x = next(iter(self.loader))[0]
+        # gx = TestLanguageModel.generation(x, 10, self.model)
+        #
+        # ####
+
         generated_logits = TestLanguageModel.generation(fixtures_gen, 10,
                                                         self.model)  # generated predictions for
         # 10 words
@@ -302,8 +310,8 @@ class TestLanguageModel:
 
 # %%
 
-NUM_EPOCHS = 6
-BATCH_SIZE = 1
+NUM_EPOCHS = 1
+BATCH_SIZE = 32
 
 # %%
 
