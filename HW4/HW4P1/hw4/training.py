@@ -10,7 +10,7 @@ import os
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from tests import test_prediction, test_generation
+from tests import test_prediction, test_generation, array_to_str
 
 SEQ_LENGTH = 60
 
@@ -72,7 +72,7 @@ class LanguageModelDataLoader(DataLoader):
 
 
 class LockedDropOut(nn.Module):
-    def __init__(self, p, batch_dim=0):
+    def __init__(self, p, batch_dim=1):
         super().__init__()
         self.keep = 1 - p
         self.batch_dim = batch_dim
@@ -87,9 +87,11 @@ class LockedDropOut(nn.Module):
         if self.batch_dim == 0:
             mask = torch.zeros((1, x.shape[1], x.shape[2]), requires_grad=False,
                                device=x.device).bernoulli_(self.keep)
-        else:
+        elif self.batch_dim == 1:
             mask = torch.zeros((x.shape[0], 1, x.shape[2]), requires_grad=False,
                                device=x.device).bernoulli_(self.keep)
+        else:
+            raise ValueError
 
         mask /= self.keep
         mask = mask.expand_as(x)
@@ -118,6 +120,15 @@ class LanguageModel(nn.Module):
         self.d2 = LockedDropOut(0.3)
         self.r3 = nn.LSTM(1150, 400)
         self.d3 = LockedDropOut(0.4)
+
+        ####
+
+        # self.d0 = nn.Identity()
+        # self.d1 = nn.Identity()
+        # self.d2 = nn.Identity()
+        # self.d3 = nn.Identity()
+
+        ####
 
         self.linear = nn.Linear(400, vocab_size)
         self.linear.weight = self.embedding.weight
@@ -188,8 +199,7 @@ class LanguageModelTrainer:
 
     def train_batch(self, inputs, targets):
         output = self.model(inputs.to(device))
-        # print(output.shape)
-        # print(targets.shape)
+
         loss = self.criterion(output, targets.to(device))
 
         self.optimizer.zero_grad()
@@ -268,6 +278,7 @@ class TestLanguageModel:
         """
 
             Generate a sequence of words given a starting sequence.
+            :param model:
             :param inp: Initial sequence of words (batch size, length)
             :param forward: number of additional words to generate
             :return: generated words (batch size, forward)
@@ -279,7 +290,7 @@ class TestLanguageModel:
         result = torch.zeros((inp.shape[0], forward), device=inp.device, dtype=torch.long)
 
         # res = model(inp)[:, :, -1]
-        # print(res.shape)
+        # out = model(inp)
 
         result[:, 0] = torch.argmax(model(inp)[:, :, -1], 1)  # (B,)
         for i in range(1, forward):
@@ -292,7 +303,7 @@ class TestLanguageModel:
 # %%
 
 NUM_EPOCHS = 6
-BATCH_SIZE = 500
+BATCH_SIZE = 1
 
 # %%
 
