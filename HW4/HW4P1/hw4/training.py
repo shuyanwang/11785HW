@@ -55,17 +55,40 @@ class LanguageModelSet(Dataset):
 
 # data loader
 
+# class LanguageModelDataLoader(DataLoader):
+#     """
+#     """
+#
+#     def __init__(self, dataset, batch_size, shuffle=True):
+#         if isinstance(dataset, LanguageModelSet):
+#             super(LanguageModelDataLoader, self).__init__(dataset, batch_size,
+#                                                           shuffle)
+#         else:
+#             super(LanguageModelDataLoader, self).__init__(LanguageModelSet(dataset), batch_size,
+#                                                           shuffle)
+#
+
 class LanguageModelDataLoader(DataLoader):
     """
     """
 
     def __init__(self, dataset, batch_size, shuffle=True):
-        if isinstance(dataset, LanguageModelSet):
-            super(LanguageModelDataLoader, self).__init__(dataset, batch_size,
-                                                          shuffle)
-        else:
-            super(LanguageModelDataLoader, self).__init__(LanguageModelSet(dataset), batch_size,
-                                                          shuffle)
+        self.dataset = dataset
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        data = torch.from_numpy(np.concatenate(self.dataset))
+        self.len = (data.shape[0] - 1) // SEQ_LENGTH
+        self.input = torch.zeros((self.len, SEQ_LENGTH), dtype=torch.long)
+        self.target = torch.zeros_like(self.input)
+
+        for i in range(self.len):
+            self.input[i] = data[i * SEQ_LENGTH:(i + 1) * SEQ_LENGTH]
+            self.target[i] = data[i * SEQ_LENGTH + 1:(i + 1) * SEQ_LENGTH + 1]
+
+        for batch in range(self.len // self.batch_size):
+            yield (self.input[batch * self.batch_size:(batch + 1) * self.batch_size, :],
+                   self.target[batch * self.batch_size:(batch + 1) * self.batch_size, :])
 
 
 # %%
@@ -131,7 +154,7 @@ class LanguageModel(nn.Module):
         ####
 
         self.linear = nn.Linear(400, vocab_size)
-        # self.linear.weight = self.embedding.weight
+        self.linear.weight = self.embedding.weight
 
         for weight in self.parameters():
             nn.init.uniform_(weight, -1 / np.sqrt(1150), 1 / np.sqrt(1150))
@@ -324,8 +347,8 @@ print("Saving models, predictions, and generated words to ./experiments/%s" % ru
 # %%
 
 model = LanguageModel(vocab.shape[0])
-dataset_torch = LanguageModelSet(dataset)
-loader = LanguageModelDataLoader(dataset=dataset_torch, batch_size=BATCH_SIZE, shuffle=True)
+# dataset_torch = LanguageModelSet(dataset)
+loader = LanguageModelDataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
 trainer = LanguageModelTrainer(model=model, loader=loader, max_epochs=NUM_EPOCHS, run_id=run_id)
 
 # %%
