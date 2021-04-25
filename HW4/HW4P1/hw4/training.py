@@ -97,22 +97,22 @@ class LanguageModelDataLoader(DataLoader):
 
 
 class LockedDropOut(nn.Module):
-    def __init__(self, p, batch_dim=1):
+    def __init__(self, p, T_dim=0):
         super().__init__()
         self.keep = 1 - p
-        self.batch_dim = batch_dim
+        self.T_dim = T_dim
 
     def forward(self, x):
         """
-        :param x: (B,T,C)
+        :param x: (T,B,C) or (B,T,C); T dimension is specified
         :return:
         """
         if not self.training:
             return x
-        if self.batch_dim == 0:
+        if self.T_dim == 0:
             mask = torch.zeros((1, x.shape[1], x.shape[2]), requires_grad=False,
                                device=x.device).bernoulli_(self.keep)
-        elif self.batch_dim == 1:
+        elif self.T_dim == 1:
             mask = torch.zeros((x.shape[0], 1, x.shape[2]), requires_grad=False,
                                device=x.device).bernoulli_(self.keep)
         else:
@@ -131,7 +131,7 @@ class LockedDropOut(nn.Module):
 #     def forward(self, x):
 #         return self.d(x)
 
-EMBEDDING_SIZE = 400
+EMBEDDING_SIZE = 1150
 HIDDEN_SIZE = 1150
 
 
@@ -240,7 +240,7 @@ class LanguageModelTrainer:
         # don't change these
         self.model.eval()  # set to eval mode
 
-        print(array_to_str(fixtures_pred['inp'], vocab))
+        # print(array_to_str(fixtures_pred['inp'], vocab))
 
         predictions = TestLanguageModel.prediction(fixtures_pred['inp'],
                                                    self.model)  # get predictions
