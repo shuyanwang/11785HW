@@ -55,40 +55,42 @@ class LanguageModelSet(Dataset):
 
 # data loader
 
-# class LanguageModelDataLoader(DataLoader):
-#     """
-#     """
-#
-#     def __init__(self, dataset, batch_size, shuffle=True):
-#         if isinstance(dataset, LanguageModelSet):
-#             super(LanguageModelDataLoader, self).__init__(dataset, batch_size,
-#                                                           shuffle)
-#         else:
-#             super(LanguageModelDataLoader, self).__init__(LanguageModelSet(dataset), batch_size,
-#                                                           shuffle)
-#
-
 class LanguageModelDataLoader(DataLoader):
     """
     """
 
     def __init__(self, dataset, batch_size, shuffle=True):
-        self.dataset = dataset
-        self.batch_size = batch_size
+        if isinstance(dataset, LanguageModelSet):
+            super(LanguageModelDataLoader, self).__init__(dataset, batch_size,
+                                                          shuffle)
+        else:
+            super(LanguageModelDataLoader, self).__init__(LanguageModelSet(dataset), batch_size,
+                                                          shuffle)
 
-    def __iter__(self):
-        data = torch.from_numpy(np.concatenate(self.dataset))
-        self.len = (data.shape[0] - 1) // SEQ_LENGTH
-        self.input = torch.zeros((self.len, SEQ_LENGTH), dtype=torch.long)
-        self.target = torch.zeros_like(self.input)
 
-        for i in range(self.len):
-            self.input[i] = data[i * SEQ_LENGTH:(i + 1) * SEQ_LENGTH]
-            self.target[i] = data[i * SEQ_LENGTH + 1:(i + 1) * SEQ_LENGTH + 1]
+#
 
-        for batch in range(self.len // self.batch_size):
-            yield (self.input[batch * self.batch_size:(batch + 1) * self.batch_size, :],
-                   self.target[batch * self.batch_size:(batch + 1) * self.batch_size, :])
+# class LanguageModelDataLoader(DataLoader):
+#     """
+#     """
+#
+#     def __init__(self, dataset, batch_size, shuffle=True):
+#         self.dataset = dataset
+#         self.batch_size = batch_size
+#
+#     def __iter__(self):
+#         data = torch.from_numpy(np.concatenate(self.dataset))
+#         self.len = (data.shape[0] - 1) // SEQ_LENGTH
+#         self.input = torch.zeros((self.len, SEQ_LENGTH), dtype=torch.long)
+#         self.target = torch.zeros_like(self.input)
+#
+#         for i in range(self.len):
+#             self.input[i] = data[i * SEQ_LENGTH:(i + 1) * SEQ_LENGTH]
+#             self.target[i] = data[i * SEQ_LENGTH + 1:(i + 1) * SEQ_LENGTH + 1]
+#
+#         for batch in range(self.len // self.batch_size):
+#             yield (self.input[batch * self.batch_size:(batch + 1) * self.batch_size, :],
+#                    self.target[batch * self.batch_size:(batch + 1) * self.batch_size, :])
 
 
 # %%
@@ -129,19 +131,22 @@ class LockedDropOut(nn.Module):
 #     def forward(self, x):
 #         return self.d(x)
 
+EMBEDDING_SIZE = 400
+HIDDEN_SIZE = 1150
+
 
 class LanguageModel(nn.Module):
     def __init__(self, vocab_size):
         super(LanguageModel, self).__init__()
 
-        self.embedding = nn.Embedding(vocab_size, 400)
+        self.embedding = nn.Embedding(vocab_size, EMBEDDING_SIZE)
 
         self.d0 = LockedDropOut(0.65)
-        self.r1 = nn.LSTM(input_size=400, hidden_size=1150)
+        self.r1 = nn.LSTM(input_size=EMBEDDING_SIZE, hidden_size=HIDDEN_SIZE)
         self.d1 = LockedDropOut(0.3)
-        self.r2 = nn.LSTM(1150, 1150)
+        self.r2 = nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE)
         self.d2 = LockedDropOut(0.3)
-        self.r3 = nn.LSTM(1150, 400)
+        self.r3 = nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE)
         self.d3 = LockedDropOut(0.4)
 
         ####
@@ -167,7 +172,7 @@ class LanguageModel(nn.Module):
 
         x = self.embedding(x)
 
-        # (B,SEQ,EMBEDDING)
+        # (B,T,EMBEDDING)
         x = torch.transpose(x, 0, 1)
         # (T,B,Embedding)
 
@@ -234,6 +239,9 @@ class LanguageModelTrainer:
     def test(self):
         # don't change these
         self.model.eval()  # set to eval mode
+
+        print(array_to_str(fixtures_pred['inp'], vocab))
+
         predictions = TestLanguageModel.prediction(fixtures_pred['inp'],
                                                    self.model)  # get predictions
         self.predictions.append(predictions)
@@ -333,7 +341,7 @@ class TestLanguageModel:
 
 # %%
 
-NUM_EPOCHS = 1
+NUM_EPOCHS = 10
 BATCH_SIZE = 32
 
 # %%
@@ -347,9 +355,11 @@ print("Saving models, predictions, and generated words to ./experiments/%s" % ru
 # %%
 
 model = LanguageModel(vocab.shape[0])
-# dataset_torch = LanguageModelSet(dataset)
-loader = LanguageModelDataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
+dataset_torch = LanguageModelSet(dataset)
+loader = LanguageModelDataLoader(dataset=dataset_torch, batch_size=BATCH_SIZE, shuffle=True)
 trainer = LanguageModelTrainer(model=model, loader=loader, max_epochs=NUM_EPOCHS, run_id=run_id)
+
+# print(array_to_str(fixtures_pred['inp'][0], vocab))
 
 # %%
 
