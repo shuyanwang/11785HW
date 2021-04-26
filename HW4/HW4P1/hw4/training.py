@@ -9,10 +9,11 @@ import time
 import os
 import torch
 import torch.nn as nn
+from torch.nn import functional
 from torch.utils.data import Dataset, DataLoader
 from tests import test_prediction, test_generation, array_to_str
 
-SEQ_LENGTH = 60
+SEQ_LENGTH = 5
 
 device = torch.device(0)
 
@@ -68,8 +69,6 @@ class LanguageModelDataLoader(DataLoader):
                                                           shuffle)
 
 
-#
-
 # class LanguageModelDataLoader(DataLoader):
 #     """
 #     """
@@ -93,46 +92,63 @@ class LanguageModelDataLoader(DataLoader):
 #                    self.target[batch * self.batch_size:(batch + 1) * self.batch_size, :])
 
 
-# %%
-
-
 class LockedDropOut(nn.Module):
-    def __init__(self, p, T_dim=0):
+    def __init__(self, T_dim=0):
         super().__init__()
-        self.keep = 1 - p
         self.T_dim = T_dim
 
-    def forward(self, x):
+    def forward(self, x, p):
         """
         :param x: (T,B,C) or (B,T,C); T dimension is specified
+        :param p: probability
         :return:
         """
         if not self.training:
             return x
         if self.T_dim == 0:
             mask = torch.zeros((1, x.shape[1], x.shape[2]), requires_grad=False,
-                               device=x.device).bernoulli_(self.keep)
+                               device=x.device).bernoulli_(1 - p)
         elif self.T_dim == 1:
             mask = torch.zeros((x.shape[0], 1, x.shape[2]), requires_grad=False,
-                               device=x.device).bernoulli_(self.keep)
+                               device=x.device).bernoulli_(1 - p)
         else:
             raise ValueError
 
-        mask /= self.keep
+        mask /= (1 - p)
         mask = mask.expand_as(x)
         return mask * x
 
 
-# class LockedDropOut(nn.Module):
-#     def __init__(self, p):
-#         super(LockedDropOut, self).__init__()
-#         self.d = nn.Dropout(p)
-#
-#     def forward(self, x):
-#         return self.d(x)
-
-EMBEDDING_SIZE = 1150
+EMBEDDING_SIZE = 400
 HIDDEN_SIZE = 1150
+
+
+class WeightDrop(nn.Module):
+    def __init__(self, module, p=0.5):
+        super(WeightDrop, self).__init__()
+        self.p = p
+        self.module = module
+        self._setup()
+
+    def null(*args, **kwargs):
+        return
+
+    def _setup(self):
+        if issubclass(type(self.module), torch.nn.RNNBase):
+            self.module.flatten_parameters = self.null
+
+        w = getattr(self.module, 'weight_hh_l0')
+        del self.module._parameters['weight_hh_l0']
+        self.module.register_parameter('weight_hh_l0' + '_raw', nn.Parameter(w.data))
+
+    def _setweights(self):
+        raw_w = getattr(self.module, 'weight_hh_l0' + '_raw')
+        w = nn.Parameter(functional.dropout(raw_w, p=self.p, training=self.training))
+        setattr(self.module, 'weight_hh_l0', w)
+
+    def forward(self, *args):
+        self._setweights()
+        return self.module.forward(*args)
 
 
 class LanguageModel(nn.Module):
@@ -141,32 +157,23 @@ class LanguageModel(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, EMBEDDING_SIZE)
 
-        self.d0 = LockedDropOut(0.65)
-        self.r1 = nn.LSTM(input_size=EMBEDDING_SIZE, hidden_size=HIDDEN_SIZE)
-        self.d1 = LockedDropOut(0.3)
+        self.d0 = LockedDropOut()
+        self.r1 = nn.LSTM(EMBEDDING_SIZE, HIDDEN_SIZE)
         self.r2 = nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE)
-        self.d2 = LockedDropOut(0.3)
         self.r3 = nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE)
-        self.d3 = LockedDropOut(0.4)
+        # self.r1 = WeightDrop(nn.LSTM(EMBEDDING_SIZE, HIDDEN_SIZE))
+        # self.r2 = WeightDrop(nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE))
+        # self.r3 = WeightDrop(nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE))
 
-        ####
-
-        # self.d0 = nn.Identity()
-        # self.d1 = nn.Identity()
-        # self.d2 = nn.Identity()
-        # self.d3 = nn.Identity()
-
-        ####
-
-        self.linear = nn.Linear(400, vocab_size)
+        self.linear = nn.Linear(EMBEDDING_SIZE, vocab_size)
         self.linear.weight = self.embedding.weight
 
         for weight in self.parameters():
-            nn.init.uniform_(weight, -1 / np.sqrt(1150), 1 / np.sqrt(1150))
+            nn.init.uniform_(weight, -1 / np.sqrt(HIDDEN_SIZE), 1 / np.sqrt(HIDDEN_SIZE))
 
         nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
 
-    def forward(self, x):
+    def forward(self, x, hs=None, cs=None):
         # Feel free to add extra arguments to forward (like an argument to pass in the hiddens)
         # x: (B,SEQ)
 
@@ -176,14 +183,25 @@ class LanguageModel(nn.Module):
         x = torch.transpose(x, 0, 1)
         # (T,B,Embedding)
 
-        x = self.r1(self.d0(x))[0]
-        x = self.r2(self.d1(x))[0]
-        x = self.r3(self.d2(x))[0]
-        x = self.d3(x)
-        x = self.linear(x)  # (T,B,E)
+        if hs is not None:
+            x, (h1, c1) = self.r1(self.d0(x, 0.65), (hs[0], cs[0]))
+            x, (h2, c2) = self.r2(self.d0(x, 0.3), (hs[1], cs[1]))
+            x, (h3, c3) = self.r3(self.d0(x, 0.3), (hs[2], cs[2]))
+        else:
+            x, (h1, c1) = self.r1(self.d0(x, 0.65))
+            x, (h2, c2) = self.r2(self.d0(x, 0.3))
+            x, (h3, c3) = self.r3(self.d0(x, 0.3))
 
-        x = torch.transpose(x, 0, 1)
-        return torch.transpose(x, 1, 2)  # B, ENCODING, SEQ
+        x = self.d0(x, 0.4)  # (T,B,E)
+        x = torch.transpose(x, 0, 1)  # (B,T,E)
+
+        out = torch.reshape(x, (x.shape[0] * x.shape[1], x.shape[2]))
+
+        out = self.linear(out)  # (B*T,VOCAB)
+
+        x = torch.reshape(out, (x.shape[0], x.shape[1], -1))  # (B,T,VOCAB)
+
+        return torch.transpose(x, 1, 2), ((h1, h2, h3), (c1, c2, c3))  # (B, ENCODING, SEQ),(h,c)
 
 
 # %%
@@ -196,7 +214,7 @@ class LanguageModelTrainer:
             Use this class to train your model
         """
         # feel free to add any other parameters here
-        self.model = model.cuda()
+        self.model = model.cuda(device=device)
         self.loader = loader
         self.train_losses = []
         self.val_losses = []
@@ -210,8 +228,8 @@ class LanguageModelTrainer:
         self.max_epochs = max_epochs
         self.run_id = run_id
 
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1)
-        self.criterion = nn.CrossEntropyLoss().cuda()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-6)
+        self.criterion = nn.CrossEntropyLoss().cuda(device=device)
 
     def train(self):
         self.model.train()  # set to training mode
@@ -226,7 +244,7 @@ class LanguageModelTrainer:
         self.train_losses.append(epoch_loss)
 
     def train_batch(self, inputs, targets):
-        output = self.model(inputs.to(device))
+        output = self.model(inputs.to(device))[0]
 
         loss = self.criterion(output, targets.to(device))
 
@@ -310,7 +328,7 @@ class TestLanguageModel:
         inp = torch.from_numpy(inp)
         inp = inp.to(device)
 
-        return model(inp).cpu().detach().numpy()
+        return model(inp)[0].cpu().detach().numpy()
 
     @staticmethod
     def generation(inp, forward, model):
@@ -323,25 +341,26 @@ class TestLanguageModel:
             :return: generated words (batch size, forward)
         """
 
-        inp = torch.from_numpy(inp)  # (B,S)
+        inp = torch.from_numpy(inp)  # (B,T)
         inp = inp.to(device)
 
         result = torch.zeros((inp.shape[0], forward), device=inp.device, dtype=torch.long)
 
         # res = model(inp)[:, :, -1]
         # out = model(inp)
-
-        result[:, 0] = torch.argmax(model(inp)[:, :, -1], 1)  # (B,)
+        output, (hs, cs) = model(inp)
+        result[:, 0] = torch.argmax(output[:, :, -1], 1)  # (B,)
         for i in range(1, forward):
-            inp = torch.cat((inp, torch.unsqueeze(result[:, i - 1], 1)), dim=1)
-            result[:, i] = torch.argmax(model(inp)[:, :, -1], 1)
+            inp = torch.unsqueeze(result[:, i - 1], 1)
+            output, (hs, cs) = model(inp, hs, cs)
+            result[:, i] = torch.argmax(output[:, :, -1], 1)
 
         return result.cpu().detach().numpy()
 
 
 # %%
 
-NUM_EPOCHS = 10
+NUM_EPOCHS = 6
 BATCH_SIZE = 32
 
 # %%
