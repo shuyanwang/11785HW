@@ -1,7 +1,11 @@
-# %%
+#### As per the course policy, Tony Huang kindly helped me finding a BUG in my code.
+## Many thanks to Tony
+
+
+#### In addition, I referenced the original code at https://github.com/salesforce/awd-lstm-lm
+# This is allowed per the piazza post: https://piazza.com/class/khtqzctrciu1fp?cid=1217
 
 from torch.utils.data.dataset import T_co
-# % matplotlib inline
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,7 +17,7 @@ from torch.nn import functional
 from torch.utils.data import Dataset, DataLoader
 from tests import test_prediction, test_generation, array_to_str
 
-SEQ_LENGTH = 5
+SEQ_LENGTH = 70  # VARIABLE
 
 device = torch.device(0)
 
@@ -158,20 +162,20 @@ class LanguageModel(nn.Module):
         self.embedding = nn.Embedding(vocab_size, EMBEDDING_SIZE)
 
         self.d0 = LockedDropOut()
-        self.r1 = nn.LSTM(EMBEDDING_SIZE, HIDDEN_SIZE)
-        self.r2 = nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE)
-        self.r3 = nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE)
-        # self.r1 = WeightDrop(nn.LSTM(EMBEDDING_SIZE, HIDDEN_SIZE))
-        # self.r2 = WeightDrop(nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE))
-        # self.r3 = WeightDrop(nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE))
+        # self.r1 = nn.LSTM(EMBEDDING_SIZE, HIDDEN_SIZE)
+        # self.r2 = nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE)
+        # self.r3 = nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE)
+        self.r1 = WeightDrop(nn.LSTM(EMBEDDING_SIZE, HIDDEN_SIZE))
+        self.r2 = WeightDrop(nn.LSTM(HIDDEN_SIZE, HIDDEN_SIZE))
+        self.r3 = WeightDrop(nn.LSTM(HIDDEN_SIZE, EMBEDDING_SIZE))
 
         self.linear = nn.Linear(EMBEDDING_SIZE, vocab_size)
         self.linear.weight = self.embedding.weight
 
         for weight in self.parameters():
-            nn.init.uniform_(weight, -1 / np.sqrt(HIDDEN_SIZE), 1 / np.sqrt(HIDDEN_SIZE))
+            nn.init.uniform_(weight, -1 / np.sqrt(HIDDEN_SIZE), 1 / np.sqrt(HIDDEN_SIZE))  # comment
 
-        nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
+        nn.init.uniform_(self.embedding.weight, -0.1, 0.1)  # linear
 
     def forward(self, x, hs=None, cs=None):
         # Feel free to add extra arguments to forward (like an argument to pass in the hiddens)
@@ -195,13 +199,17 @@ class LanguageModel(nn.Module):
         x = self.d0(x, 0.4)  # (T,B,E)
         x = torch.transpose(x, 0, 1)  # (B,T,E)
 
+        # x = self.linear(x)  # (B,T,VOCAB)
+        # x = torch.reshape(x, (x.shape[0] * x.shape[1], -1))
+        # return x, ((h1, h2, h3), (c1, c2, c3))  # (B*T, VOCAB),(h,c)
+
         out = torch.reshape(x, (x.shape[0] * x.shape[1], x.shape[2]))
 
         out = self.linear(out)  # (B*T,VOCAB)
 
         x = torch.reshape(out, (x.shape[0], x.shape[1], -1))  # (B,T,VOCAB)
 
-        return torch.transpose(x, 1, 2), ((h1, h2, h3), (c1, c2, c3))  # (B, ENCODING, SEQ),(h,c)
+        return torch.transpose(x, 1, 2), ((h1, h2, h3), (c1, c2, c3))  # (B, VOCAB, SEQ),(h,c)
 
 
 # %%
@@ -228,7 +236,7 @@ class LanguageModelTrainer:
         self.max_epochs = max_epochs
         self.run_id = run_id
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-6)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         self.criterion = nn.CrossEntropyLoss().cuda(device=device)
 
     def train(self):
@@ -244,7 +252,7 @@ class LanguageModelTrainer:
         self.train_losses.append(epoch_loss)
 
     def train_batch(self, inputs, targets):
-        output = self.model(inputs.to(device))[0]
+        output = self.model(inputs.to(device))[0]  # (reshape to flatten)
 
         loss = self.criterion(output, targets.to(device))
 
@@ -328,7 +336,7 @@ class TestLanguageModel:
         inp = torch.from_numpy(inp)
         inp = inp.to(device)
 
-        return model(inp)[0].cpu().detach().numpy()
+        return model(inp)[0][:, :, -1].cpu().detach().numpy()
 
     @staticmethod
     def generation(inp, forward, model):
@@ -360,8 +368,8 @@ class TestLanguageModel:
 
 # %%
 
-NUM_EPOCHS = 6
-BATCH_SIZE = 32
+NUM_EPOCHS = 20
+BATCH_SIZE = 128
 
 # %%
 
