@@ -1,7 +1,12 @@
+import os
 import torch
 import numpy as np
 import torch.utils.data
 import Levenshtein
+import argparse
+
+from torchinfo import summary
+
 from utils.base import *
 
 letter2index = {"<eos>": 0, "'": 1, "a": 2, "b": 3, "c": 4, "d": 5, "e": 6, "f": 7, "g": 8, "h": 9, "i": 10, "j": 11,
@@ -9,6 +14,8 @@ letter2index = {"<eos>": 0, "'": 1, "a": 2, "b": 3, "c": 4, "d": 5, "e": 6, "f":
                 "v": 23, "w": 24, "x": 25, "y": 26, "z": 27, " ": 28}
 
 index2letter = {letter2index[key]: key for key in letter2index}
+
+num_workers = 8
 
 
 class ParamsHW4(Params):
@@ -35,65 +42,30 @@ class ParamsHW4(Params):
         return self.str
 
 
-class DataSetHW3(torch.utils.data.Dataset):
+class DataSetHW4(torch.utils.data.Dataset):
     def __init__(self, X_path, Y_path=None):
         super().__init__()
-        X = np.load(X_path)
-        self.N = X.shape[0]
-        self.X = []
-        self.Y = None
-        self.lengths_X = []
-        for x in X:
-            self.X.append(torch.as_tensor(x, dtype=torch.float))
-            self.lengths_X.append(x.shape[0])
-        self.X = torch.nn.utils.rnn.pad_sequence(self.X, batch_first=True)
-        self.len = self.X.shape[0]
+        self.X = np.load(X_path)
+        self.N = self.X.shape[0]
 
         if Y_path is not None:
-            Y = np.load(Y_path, allow_pickle=True)
-            self.lengths_Y = []
-            self.Y = []
-            for y in Y:
-                self.Y.append(torch.as_tensor(y, dtype=torch.long))
-                self.lengths_Y.append(len(y))
-            self.Y = torch.nn.utils.rnn.pad_sequence(self.Y, batch_first=True)
+            self.Y = np.load(Y_path, allow_pickle=True)
 
         print(X_path, self.__len__())
 
     def __getitem__(self, index):
-        return self.X[index], self.lengths_X[index], self.Y[index], self.lengths_Y[index]
+        if self.Y is not None:
+            return torch.tensor(self.X[index].astype(np.float32)), torch.tensor(self.Y[index])
+        return torch.tensor(self.X[index].astype(np.float32))
 
     def __len__(self):
-        return self.len
+        return self.N
 
 
-class TestSetHW3(torch.utils.data.Dataset):
-    def __init__(self, X_path):
-        super().__init__()
-        X = np.load(X_path, allow_pickle=True)
-        self.N = X.shape[0]
-        self.X = []
-        self.lengths = []
-        for x in X:
-            self.X.append(torch.as_tensor(x, dtype=torch.float))
-            self.lengths.append(x.shape[0])
-        self.X = torch.nn.utils.rnn.pad_sequence(self.X, batch_first=True)
-        self.len = self.X.shape[0]
-
-        print(X_path, self.__len__())
-
-    def __getitem__(self, index):
-        return self.X[index], self.lengths[index]
-
-    def __len__(self):
-        return self.len
-
-
-class HW3(Learning):
-    def __init__(self, params: ParamsHW3, model):
+class HW4(Learning):
+    def __init__(self, params: ParamsHW4, model):
         super().__init__(params, model, None, nn.CTCLoss)
-        self.decoder = CTCBeamDecoder(PHONEME_MAP, log_probs_input=True, num_processes=10,
-                                      cutoff_top_n=params.input_dims[0] + 1)
+        self.decoder = None
         optimizer = eval('torch.optim.' + params.optimizer)
         self.optimizer = optimizer(self.model.parameters(), lr=self.params.lr,
                                    weight_decay=self.params.decay)
@@ -101,22 +73,22 @@ class HW3(Learning):
         print(str(self))
 
     def _load_train(self):
-        train_set = TrainSetHW3(os.path.join(self.params.data_dir, 'train.npy'),
-                                os.path.join(self.params.data_dir, 'train_labels.npy'))
+        train_set = DataSetHW4(os.path.join(self.params.data_dir, 'train.npy'),
+                               os.path.join(self.params.data_dir, 'train_labels.npy'))
         self.train_loader = torch.utils.data.DataLoader(train_set,
                                                         batch_size=self.params.B, shuffle=True,
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_valid(self):
-        valid_set = TrainSetHW3(os.path.join(self.params.data_dir, 'dev.npy'),
-                                os.path.join(self.params.data_dir, 'dev_labels.npy'))
+        valid_set = DataSetHW4(os.path.join(self.params.data_dir, 'dev.npy'),
+                               os.path.join(self.params.data_dir, 'dev_labels.npy'))
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
                                                         pin_memory=True, num_workers=num_workers)
 
     def _load_test(self):
-        test_set = TestSetHW3(os.path.join(self.params.data_dir, 'test.npy'))
+        test_set = DataSetHW4(os.path.join(self.params.data_dir, 'test.npy'))
 
         self.test_loader = torch.utils.data.DataLoader(test_set,
                                                        batch_size=self.params.B, shuffle=False,
@@ -135,7 +107,7 @@ class HW3(Learning):
             b_string = []
             for letter in letters:
                 if letter != 0:
-                    b_string.append(PHONEME_MAP[letter])
+                    b_string.append(index2letter[letter])
             strings.append(''.join(b_string))
         return strings
 
@@ -152,7 +124,7 @@ class HW3(Learning):
             chars = []
             for char in y_b[0:lengths_y[b]]:
                 if char != 0:
-                    chars.append(PHONEME_MAP[char])
+                    chars.append(index2letter[char])
             results.append(''.join(chars))
 
         return results
@@ -226,7 +198,7 @@ class HW3(Learning):
                     loss = self.criterion(output, y, lengths_out, lengths_y)
                     total_loss += loss
 
-                    y_strs = HW3.to_str(y, lengths_y)
+                    y_strs = HW4.to_str(y, lengths_y)
                     out_strs = self.decode(output, lengths_out)
 
                     for y_str, out_str in zip(y_strs, out_strs):
@@ -275,23 +247,23 @@ def main():
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--save', default=10, type=int, help='Checkpoint interval')
     parser.add_argument('--load', default='', help='Load Name')
-    parser.add_argument('--bi', action='store_true')
-    parser.add_argument('--layer', default=2, type=int)
-    parser.add_argument('--h', default=1024, type=int)
-    parser.add_argument('--c', default=-1, type=int)
+    parser.add_argument('--le', default=2, type=int)
+    parser.add_argument('--ld', default=2, type=int)
+    parser.add_argument('--he', default=1024, type=int)
+    parser.add_argument('--hc', default=1024, type=int)
     parser.add_argument('--schedule', default=5, type=int)
     parser.add_argument('--decay', default=5e-5, type=float)
     parser.add_argument('--optimizer', default='Adam')
 
     args = parser.parse_args()
 
-    params = ParamsHW3(B=args.batch, dropout=args.dropout, lr=args.lr,
-                       device='cuda:' + args.gpu_id, conv_size=args.c,
-                       num_layer=args.layer, hidden_size=args.h, bi=args.bi,
+    params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr,
+                       device='cuda:' + args.gpu_id, layer_decoder=args.ld,
+                       layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
                        schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer)
 
     model = eval(args.model + '(params)')
-    learner = HW3(params, model)
+    learner = HW4(params, model)
     if args.epoch >= 0:
         if args.load == '':
             learner.load_model(args.epoch)
