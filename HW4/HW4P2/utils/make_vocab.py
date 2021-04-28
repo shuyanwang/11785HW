@@ -5,26 +5,36 @@ import json
 data_dir = 'c:/DLData/11785_data/HW4'
 
 
-def make():
+def make_x():
+    train_x = np.load(os.path.join(data_dir, 'train.npy'), allow_pickle=True)  # (N,T_in,40)
+
+    for article in train_x:
+        for sequence in article:
+            t = 0
+
+
+def make_labels():
     train_y = np.load(os.path.join(data_dir, 'train_transcripts.npy'),
                       allow_pickle=True)  # (N,T_out), dtype=bytes
     valid_y = np.load(os.path.join(data_dir, 'dev_transcripts.npy'), allow_pickle=True)
 
     vocab = set()
-    for article in train_y:
-        for sequence in article:
-            for character in sequence:
+    for sentence in train_y:
+        for word in sentence:
+            for character in word:
                 vocab.add(chr(character))
 
-    for article in valid_y:
-        for sequence in article:
-            for character in sequence:
+    for sentence in valid_y:
+        for word in sentence:
+            for character in word:
                 vocab.add(chr(character))
 
     vocab = list(vocab)
     vocab.sort()
 
     dictionary = {vocab[i]: (i + 1) for i in range(len(vocab))}  # 1->27; <eol> is 0
+
+    dictionary[" "] = len(dictionary) + 1
 
     with open('vocab.json', 'w') as f:
         json.dump(dictionary, f)
@@ -39,13 +49,15 @@ def parse():
 
         train_y_np = []
 
-        for article in train_y:
-            for sequence in article:
-                sequence_np = np.zeros((len(sequence) + 1), dtype=int)
-                for i, character in enumerate(sequence):
-                    sequence_np[i] = dictionary[chr(character)]
+        for sentence in train_y:
+            sentence_np = []
+            for word in sentence:
+                for i, character in enumerate(word):
+                    sentence_np.append(dictionary[chr(character)])
+                sentence_np.append(dictionary[" "])
+            sentence_np.append(0)
 
-                train_y_np.append(sequence_np)
+            train_y_np.append(np.asarray(sentence_np, dtype=int))
 
         train_y_np = np.asarray(train_y_np, dtype=object)
 
@@ -55,13 +67,15 @@ def parse():
 
         valid_y_np = []
 
-        for article in valid_y:
-            for sequence in article:
-                sequence_np = np.zeros((len(sequence) + 1), dtype=int)
-                for i, character in enumerate(sequence):
-                    sequence_np[i] = dictionary[chr(character)]
+        for sentence in valid_y:
+            sentence_np = []
+            for word in sentence:
+                for i, character in enumerate(word):
+                    sentence_np.append(dictionary[chr(character)])
+                sentence_np.append(dictionary[" "])
+            sentence_np.append(0)
 
-                valid_y_np.append(sequence_np)
+            valid_y_np.append(np.asarray(sentence_np, dtype=int))
 
         valid_y_np = np.asarray(valid_y_np, dtype=object)
 
@@ -69,6 +83,7 @@ def parse():
 
 
 if __name__ == '__main__':
-    # make()
-    # parse()
+    # make_x()
+    # make_labels()
+    parse()
     pass
