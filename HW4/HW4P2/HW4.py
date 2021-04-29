@@ -19,12 +19,17 @@ num_workers = 8
 
 
 class ParamsHW4(Params):
-    def __init__(self, B, lr, dropout, device, layer_encoder, layer_decoder, hidden_encoder, hidden_decoder,
-                 schedule_int, decay, optimizer, max_epoch=20001, data_dir='/home/zongyuez/dldata/HW4'):
+    def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder, layer_decoder,
+                 hidden_encoder,
+                 hidden_decoder, schedule_int, decay, optimizer, max_epoch=20001, data_dir='/home/zongyuez/dldata/HW4'):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=len(index2letter),
                          data_dir=data_dir, device=device, input_dims=(40,))
 
+        assert embedding_dim == self.attention_dim * 2
+
+        self.attention_dim = attention_dim
+        self.embedding_dim = embedding_dim
         self.layer_encoder = layer_encoder
         self.layer_decoder = layer_decoder
         self.hidden_encoder = hidden_encoder
@@ -36,7 +41,7 @@ class ParamsHW4(Params):
         self.str = 'b' + str(self.B) + 'lr' + str(self.lr) + 's' + str(
                 schedule_int) + 'decay' + str(decay) + optimizer + 'drop' + str(
                 self.dropout) + 'le' + str(layer_encoder) + 'ld' + str(layer_decoder) + 'he' + str(
-                hidden_encoder) + 'hd' + str(hidden_decoder)
+                hidden_encoder) + 'hd' + str(hidden_decoder) + 'emb' + str(embedding_dim) + 'att' + str(attention_dim)
 
     def __str__(self):
         return self.str
@@ -295,13 +300,16 @@ def main():
     parser.add_argument('--schedule', default=5, type=int)
     parser.add_argument('--decay', default=5e-5, type=float)
     parser.add_argument('--optimizer', default='Adam')
+    parser.add_argument('--embedding', default=256)
+    parser.add_argument('--attention', default=128)
 
     args = parser.parse_args()
 
     params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr,
                        device='cuda:' + args.gpu_id, layer_decoder=args.ld,
                        layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
-                       schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer)
+                       schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
+                       embedding_dim=args.embedding, attention_dim=args.attention)
 
     model = eval(args.model + '(params)')
     learner = HW4(params, model)
