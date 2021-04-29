@@ -1,5 +1,3 @@
-from typing import List
-import numpy as np
 from utils.base import *
 from HW4 import ParamsHW4
 import torch
@@ -7,9 +5,9 @@ from torch import nn, Tensor
 
 
 class Encoder(nn.Module, ABC):
-    def __init__(self, params: ParamsHW4):
+    def __init__(self, param: ParamsHW4):
         super().__init__()
-        self.params = params
+        self.param = param
 
     @abstractmethod
     def forward(self, x: torch.Tensor, lengths):
@@ -23,9 +21,9 @@ class Encoder(nn.Module, ABC):
 
 
 class Decoder(nn.Module, ABC):
-    def __init__(self, params: ParamsHW4):
+    def __init__(self, param: ParamsHW4):
         super().__init__()
-        self.params = params
+        self.param = param
 
     @abstractmethod
     def forward(self, k, v, encoded_lengths, gt, p_tf):
@@ -44,7 +42,7 @@ class PBLSTM(nn.Module):
                            bidirectional=True,
                            batch_first=True)
 
-    def forward(self, x: Tensor, lengths: List):
+    def forward(self, x: Tensor, lengths):
         """
 
         :param x: (B,T,C) padded -> just a tensor
@@ -53,42 +51,45 @@ class PBLSTM(nn.Module):
         """
         B, T, C = x.shape
 
-        if T // 2 == 1:
+        if T % 2 == 1:
             x = x[:, :-1, :]
 
+        lengths = lengths // 2
         x = x.contiguous().view(B, T // 2, C * 2)
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         x = self.rnn(x)[0]
-        x = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
-        lengths = [length // 2 for length in lengths]
+        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+
         return x, lengths
 
 
 class Encoder1(Encoder):
-    def __init__(self, params):
-        super(Encoder1, self).__init__(params)
+    def __init__(self, param):
+        super(Encoder1, self).__init__(param)
 
-        self.first = nn.LSTM(params.input_dims, params.hidden_encoder, batch_first=True)
+        self.first = nn.LSTM(param.input_dims[0], param.hidden_encoder, batch_first=True,
+                             bidirectional=True)
         rnn = []
         # 1 + 3
 
-        for i in range(params.layer_encoder):
-            rnn.append(PBLSTM(params.hidden_encoder * 2, params.hidden_encoder))
+        for i in range(param.layer_encoder):
+            rnn.append(PBLSTM(param.hidden_encoder * 2, param.hidden_encoder))
 
         self.rnn = nn.ModuleList(rnn)
 
-        self.key_network = nn.Linear(params.hidden_encoder * 2, params.attention_dim)
-        self.value_network = nn.Linear(params.hidden_encoder * 2, params.attention_dim)
+        self.key_network = nn.Linear(param.hidden_encoder * 2, param.attention_dim)
+        self.value_network = nn.Linear(param.hidden_encoder * 2, param.attention_dim)
 
     def forward(self, x: torch.Tensor, lengths):
         """
 
         :param x: B,T,C
-        :param lengths: List
+        :param lengths: Tensor
         :return: k ,v, lengths
         """
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, enforce_sorted=False, batch_first=True)
         x = self.first(x)[0]
+        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
 
         for layer in self.rnn:
             x, lengths = layer(x, lengths)
@@ -152,7 +153,7 @@ class Decoder1(Decoder):
                                  hidden_size=param.hidden_decoder)
         self.lstm2 = nn.LSTMCell(input_size=param.hidden_decoder, hidden_size=param.attention_dim)
 
-        self.attention = Attention(param)
+        self.attention = DotAttention(param)
         self.character_prob = nn.Linear(param.embedding_dim, param.output_channels)
 
         self.character_prob.weight = self.embedding.weight
@@ -173,7 +174,7 @@ class Decoder1(Decoder):
 
         x, hidden1 = self.lstm1(torch.cat([input_word_embedding, context], dim=-1), hidden1)
         query, hidden2 = self.lstm2(x, hidden2)
-        context = self.attention(query, key, value, mask)
+        context, _ = self.attention(query, key, value, mask)
 
         return query, context, hidden1, hidden2
 
@@ -185,21 +186,21 @@ class Decoder1(Decoder):
         :param encoded_lengths:
         :param gt: (B,To)
         :param p_tf:
-        :return: (B,To)
+        :return: (B,o,To)
         """
 
         B, T, a = k.shape
 
         mask = torch.arange(T).unsqueeze(0) >= torch.as_tensor(encoded_lengths).unsqueeze(1)
-        mask.to(self.param.device)
+        mask = mask.to(self.param.device)
 
-        context = None
+        context = torch.zeros((B, a)).to(self.param.device)
         hidden1 = None
         hidden2 = None
 
         predictions = []
         prediction_chars = torch.zeros(B, dtype=torch.long).to(
-                self.params.device)  # <eol> at the beginning
+                self.param.device)  # <eol> at the beginning
 
         if gt is None:
             max_len = 600
@@ -211,24 +212,23 @@ class Decoder1(Decoder):
         for i in range(max_len):
             if gt is not None:
                 if torch.rand(1).item() < p_tf:
-                    input_words = gt_embeddings[:, i, :]
+                    input_words = gt_embeddings[:, i, :].argmax(dim=-1)
                 else:
                     input_words = prediction_chars
             else:
                 input_words = prediction_chars
 
             query, context, hidden1, hidden2 = self._forward_step(input_words, context, hidden1,
-                                                                  hidden2, k[:, i, :], v[:, i, :],
-                                                                  mask)
+                                                                  hidden2, k, v, mask)
 
-            prediction_raw = self.character_prob(torch.cat([query, context], dim=1))  # (B,e)
+            prediction_raw = self.character_prob(torch.cat([query, context], dim=1))  # (B,o)
             prediction_chars = prediction_raw.argmax(dim=-1)
             predictions.append(prediction_raw)
 
-        return torch.cat(predictions, dim=1)
+        return torch.stack(predictions, dim=2)
 
 
-class Seq2Seq1(nn.Module):
+class Model1(nn.Module):
     def __init__(self, param):
         super().__init__()
         self.encoder = Encoder1(param)

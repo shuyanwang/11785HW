@@ -1,16 +1,17 @@
 import os
-import torch
-import numpy as np
 import torch.utils.data
 import Levenshtein
 import argparse
+import numpy as np
 
 from torchinfo import summary
 
-from utils.base import *
+from models import *
 
-letter2index = {"<eos>": 0, "'": 1, "a": 2, "b": 3, "c": 4, "d": 5, "e": 6, "f": 7, "g": 8, "h": 9, "i": 10, "j": 11,
-                "k": 12, "l": 13, "m": 14, "n": 15, "o": 16, "p": 17, "q": 18, "r": 19, "s": 20, "t": 21, "u": 22,
+letter2index = {"<eos>": 0, "'": 1, "a": 2, "b": 3, "c": 4, "d": 5, "e": 6, "f": 7, "g": 8, "h": 9,
+                "i": 10, "j": 11,
+                "k": 12, "l": 13, "m": 14, "n": 15, "o": 16, "p": 17, "q": 18, "r": 19, "s": 20,
+                "t": 21, "u": 22,
                 "v": 23, "w": 24, "x": 25, "y": 26, "z": 27, " ": 28}
 
 index2letter = {letter2index[key]: key for key in letter2index}
@@ -19,29 +20,31 @@ num_workers = 8
 
 
 class ParamsHW4(Params):
-    def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder, layer_decoder,
-                 hidden_encoder,
-                 hidden_decoder, schedule_int, decay, optimizer, max_epoch=20001, data_dir='/home/zongyuez/dldata/HW4'):
+    def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder,
+                 hidden_encoder, hidden_decoder, schedule_int, decay, optimizer,
+                 forcing_tuple, max_epoch=20001,
+                 data_dir='C:\\DLData\\11785_data\\HW4'):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=len(index2letter),
                          data_dir=data_dir, device=device, input_dims=(40,))
 
-        assert embedding_dim == self.attention_dim * 2
-
+        self.forcing = eval(forcing_tuple)
         self.attention_dim = attention_dim
         self.embedding_dim = embedding_dim
         self.layer_encoder = layer_encoder
-        self.layer_decoder = layer_decoder
         self.hidden_encoder = hidden_encoder
         self.hidden_decoder = hidden_decoder
         self.schedule = schedule_int
         self.decay = decay
         self.optimizer = optimizer
 
+        assert embedding_dim == self.attention_dim * 2
+
         self.str = 'b' + str(self.B) + 'lr' + str(self.lr) + 's' + str(
                 schedule_int) + 'decay' + str(decay) + optimizer + 'drop' + str(
-                self.dropout) + 'le' + str(layer_encoder) + 'ld' + str(layer_decoder) + 'he' + str(
-                hidden_encoder) + 'hd' + str(hidden_decoder) + 'emb' + str(embedding_dim) + 'att' + str(attention_dim)
+                self.dropout) + 'le' + str(layer_encoder) + 'he' + str(
+                hidden_encoder) + 'hd' + str(hidden_decoder) + 'emb' + str(
+                embedding_dim) + 'att' + str(attention_dim) + 'forcing' + forcing_tuple
 
     def __str__(self):
         return self.str
@@ -50,7 +53,7 @@ class ParamsHW4(Params):
 class DataSetHW4(torch.utils.data.Dataset):
     def __init__(self, X_path, Y_path=None):
         super().__init__()
-        self.X = np.load(X_path)
+        self.X = np.load(X_path, allow_pickle=True)
         self.N = self.X.shape[0]
 
         if Y_path is not None:
@@ -91,7 +94,7 @@ def collate_train_val(data):
     pad_x = nn.utils.rnn.pad_sequence(x, batch_first=True)
     pad_y = nn.utils.rnn.pad_sequence(y, batch_first=True)
 
-    return pad_x, x_lengths, pad_y, y_lengths
+    return pad_x, torch.as_tensor(x_lengths), pad_y, torch.as_tensor(y_lengths)
 
 
 def collate_test(data):
@@ -100,20 +103,28 @@ def collate_test(data):
     :param data:
     :return: pad_x, lengths_x
     """
-    lengths = [x.shape[0] for x in data]
+    lengths = torch.as_tensor([x.shape[0] for x in data])
 
     return nn.utils.rnn.pad_sequence(data, batch_first=True), lengths
 
 
 class HW4(Learning):
     def __init__(self, params: ParamsHW4, model):
-        super().__init__(params, model, None, nn.CTCLoss)
+        super().__init__(params, model, None, None)
         self.decoder = None
+
+        self.criterion = nn.CrossEntropyLoss(ignore_index=0).to(params.device)
         optimizer = eval('torch.optim.' + params.optimizer)
         self.optimizer = optimizer(self.model.parameters(), lr=self.params.lr,
                                    weight_decay=self.params.decay)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.params.schedule, 0.5)
         print(str(self))
+
+    def forcing_p(self, epoch):
+        if epoch < self.params.forcing[2]:
+            return (self.params.forcing[1] - self.params.forcing[0]) * epoch / self.params.forcing[
+                2] + self.params.forcing[0]
+        return self.params.forcing[1]
 
     def _load_train(self):
         train_set = DataSetHW4(os.path.join(self.params.data_dir, 'train.npy'),
@@ -140,37 +151,27 @@ class HW4(Learning):
                                                        pin_memory=True, num_workers=num_workers,
                                                        collate_fn=collate_test)
 
-    def decode(self, output, lengths):
+    @staticmethod
+    def decode(output):
         """
-        :param output: (T,B,42)
-        :param lengths: (B)
+        :param output: (B,o,T)
         :return: [str] (B)
         """
-        results, _, _, results_length = self.decoder.decode(torch.transpose(output, 0, 1), lengths)
-        strings = []
-        for b in range(results.shape[0]):
-            letters = results[b, 0, 0:results_length[b][0]]
-            b_string = []
-            for letter in letters:
-                if letter != 0:
-                    b_string.append(index2letter[letter])
-            strings.append(''.join(b_string))
-        return strings
+        return HW4.to_str(torch.argmax(output, dim=1))
 
     @staticmethod
-    def to_str(y, lengths_y):
+    def to_str(y):
         """
-
         :param y: (B,T)
-        :param lengths_y: (B)
-        :return: [str]
+        :return: [str] (B)
         """
         results = []
         for b, y_b in enumerate(y):
             chars = []
-            for char in y_b[0:lengths_y[b]]:
-                if char != 0:
-                    chars.append(index2letter[char])
+            for char in y_b:
+                if char == 0:
+                    break
+                chars.append(index2letter[char])
             results.append(''.join(chars))
 
         return results
@@ -190,25 +191,25 @@ class HW4(Learning):
                 for i, batch in enumerate(tqdm(self.train_loader)):
                     x = batch[0].to(self.device)
                     lengths_x = batch[1]
-                    y = batch[2].to(self.device)
-                    lengths_y = batch[3]
+                    y = batch[2].to(self.device)  # (B,To)
+                    # lengths_y = batch[3]
 
-                    if summary_flag:
-                        summary(self.model, input_data=[x, lengths_x], depth=12,
-                                device=self.params.device)
-                        summary_flag = False
+                    # if summary_flag:
+                    #     summary(self.model, input_data=[x, lengths_x], depth=12,
+                    #             device=self.params.device)
+                    #     summary_flag = False
 
-                    # (T,N,C)
-                    output, lengths_out = self.model(x, lengths_x)
+                    # (B,e,To)
+                    output = self.model(x, lengths_x, y, self.forcing_p(epoch))
 
-                    loss = self.criterion(output, y, lengths_out, lengths_y)
+                    loss = self.criterion(output, y)
                     total_loss += loss
 
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
 
-                loss_item = total_loss.item() / (i + 1)
+                loss_item = total_loss.item() / (i + 1) / self.params.B
 
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
 
@@ -236,21 +237,21 @@ class HW4(Learning):
                     x = batch[0].to(self.device)
                     lengths_x = batch[1]
                     y = batch[2].to(self.device)
-                    lengths_y = batch[3]
+                    # lengths_y = batch[3]
 
-                    # (T,B,C)
-                    output, lengths_out = self.model(x, lengths_x)
+                    # (B,e,To)
+                    output = self.model(x, lengths_x)
 
-                    loss = self.criterion(output, y, lengths_out, lengths_y)
+                    loss = self.criterion(output, y)
                     total_loss += loss
 
-                    y_strs = HW4.to_str(y, lengths_y)
-                    out_strs = self.decode(output, lengths_out)
+                    y_strs = HW4.to_str(y)
+                    out_strs = HW4.decode(output)
 
                     for y_str, out_str in zip(y_strs, out_strs):
                         total_dist += Levenshtein.distance(y_str, out_str)
 
-                loss_item = total_loss.item() / (i + 1)
+                loss_item = total_loss.item() / (i + 1) / self.params.B
                 dist_item = total_dist.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Distance/Validation', dist_item, epoch)
@@ -271,9 +272,8 @@ class HW4(Learning):
                         x = item[0].to(self.device)
                         lengths = item[1]
 
-                        # (T,N,C)
-                        output, out_lengths = self.model(x, lengths)
-                        results = self.decode(output, out_lengths)
+                        output = self.model(x, lengths)
+                        results = self.decode(output)
 
                         for b in range(x.shape[0]):
                             f.write(str(i * self.params.B + b) + ',')
@@ -284,32 +284,33 @@ class HW4(Learning):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch', help='Batch Size', default=32, type=int)
-    parser.add_argument('--dropout', default=0.5, type=float)
-    parser.add_argument('--lr', default=2e-3, type=float)
+    parser.add_argument('--dropout', default=0, type=float)
+    parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
-    parser.add_argument('--model', default='Model19', help='Model Name')
+    parser.add_argument('--model', default='Model1', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--save', default=10, type=int, help='Checkpoint interval')
     parser.add_argument('--load', default='', help='Load Name')
-    parser.add_argument('--le', default=2, type=int)
-    parser.add_argument('--ld', default=2, type=int)
-    parser.add_argument('--he', default=1024, type=int)
-    parser.add_argument('--hc', default=1024, type=int)
+    parser.add_argument('--le', default=3, type=int)
+    parser.add_argument('--he', default=256, type=int)
+    parser.add_argument('--hd', default=512, type=int)
     parser.add_argument('--schedule', default=5, type=int)
-    parser.add_argument('--decay', default=5e-5, type=float)
+    parser.add_argument('--decay', default=5e-6, type=float)
     parser.add_argument('--optimizer', default='Adam')
-    parser.add_argument('--embedding', default=256)
-    parser.add_argument('--attention', default=128)
+    parser.add_argument('--embedding', default=256, type=int)
+    parser.add_argument('--attention', default=128, type=int)
+    parser.add_argument('--forcing', default='(0.9,0.1,20)')
 
     args = parser.parse_args()
 
     params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr,
-                       device='cuda:' + args.gpu_id, layer_decoder=args.ld,
+                       device='cuda:' + args.gpu_id,
                        layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
                        schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
-                       embedding_dim=args.embedding, attention_dim=args.attention)
+                       embedding_dim=args.embedding, attention_dim=args.attention,
+                       forcing_tuple=args.forcing)
 
     model = eval(args.model + '(params)')
     learner = HW4(params, model)
