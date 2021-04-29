@@ -136,7 +136,7 @@ class pBLSTM(nn.Module):
 class Encoder(nn.Module):
     '''
     Encoder takes the utterances as inputs and returns the key, value and unpacked_x_len.
-    Key and value are linear projections of the output from pBLSTM network for the laster.
+    Key and value are linear projections of the output from PBLSTM network for the laster.
     '''
 
     def __init__(self, input_dim, encoder_hidden_dim, key_value_size=128):
@@ -158,7 +158,7 @@ class Encoder(nn.Module):
         packed_sequence = rnn_utils.pack_padded_sequence(x, x_len, enforce_sorted=False, batch_first=True)
         packed_out, _ = self.lstm(packed_sequence)
 
-        # TODO: Pass through the pBLSTM blocks
+        # TODO: Pass through the PBLSTM blocks
         # ...
 
         # Unpack the sequence and get the Key and Value for attention
