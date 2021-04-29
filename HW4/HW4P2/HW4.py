@@ -54,12 +54,50 @@ class DataSetHW4(torch.utils.data.Dataset):
         print(X_path, self.__len__())
 
     def __getitem__(self, index):
+        """
+
+        :param index:
+        :return: (T_in,40), Optional[(T_out,)]
+        """
         if self.Y is not None:
             return torch.tensor(self.X[index].astype(np.float32)), torch.tensor(self.Y[index])
         return torch.tensor(self.X[index].astype(np.float32))
 
     def __len__(self):
         return self.N
+
+
+def collate_train_val(data):
+    """
+
+    :param data: List of Tuple
+    :return: pad_x, lengths_x, pad_y, lengths_y
+    """
+    x_lengths = []
+    y_lengths = []
+    x = []
+    y = []
+    for item in data:
+        x.append(item[0])
+        y.append(item[1])
+        x_lengths.append(item[0].shape[0])
+        y_lengths.append(item[1].shape[0])
+
+    pad_x = nn.utils.rnn.pad_sequence(x, batch_first=True)
+    pad_y = nn.utils.rnn.pad_sequence(y, batch_first=True)
+
+    return pad_x, x_lengths, pad_y, y_lengths
+
+
+def collate_test(data):
+    """
+
+    :param data:
+    :return: pad_x, lengths_x
+    """
+    lengths = [x.shape[0] for x in data]
+
+    return nn.utils.rnn.pad_sequence(data, batch_first=True), lengths
 
 
 class HW4(Learning):
@@ -77,7 +115,8 @@ class HW4(Learning):
                                os.path.join(self.params.data_dir, 'train_labels.npy'))
         self.train_loader = torch.utils.data.DataLoader(train_set,
                                                         batch_size=self.params.B, shuffle=True,
-                                                        pin_memory=True, num_workers=num_workers)
+                                                        pin_memory=True, num_workers=num_workers,
+                                                        collate_fn=collate_train_val)
 
     def _load_valid(self):
         valid_set = DataSetHW4(os.path.join(self.params.data_dir, 'dev.npy'),
@@ -85,14 +124,16 @@ class HW4(Learning):
 
         self.valid_loader = torch.utils.data.DataLoader(valid_set,
                                                         batch_size=self.params.B, shuffle=False,
-                                                        pin_memory=True, num_workers=num_workers)
+                                                        pin_memory=True, num_workers=num_workers,
+                                                        collate_fn=collate_train_val)
 
     def _load_test(self):
         test_set = DataSetHW4(os.path.join(self.params.data_dir, 'test.npy'))
 
         self.test_loader = torch.utils.data.DataLoader(test_set,
                                                        batch_size=self.params.B, shuffle=False,
-                                                       pin_memory=True, num_workers=num_workers)
+                                                       pin_memory=True, num_workers=num_workers,
+                                                       collate_fn=collate_test)
 
     def decode(self, output, lengths):
         """
