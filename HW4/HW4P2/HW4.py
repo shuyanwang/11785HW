@@ -13,11 +13,12 @@ from models import *
 class ParamsHW4(Params):
     def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder,
                  hidden_encoder, hidden_decoder, schedule_int, decay, optimizer,
-                 forcing_tuple, data_dir, max_epoch=20001):
+                 forcing_tuple, data_dir, max_epoch=20001, plot=False):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=len(index2letter),
                          data_dir=data_dir, device=device, input_dims=(40,))
 
+        self.plot = plot
         self.forcing = eval(forcing_tuple)
         self.attention_dim = attention_dim
         self.embedding_dim = embedding_dim
@@ -199,13 +200,14 @@ class HW4(Learning):
 
                     # (B,e,To)
                     output = self.model(x, lengths_x, y, self.forcing_p(epoch),
-                                        plot=i == plot_index and (
-                                                    'simple' not in self.params.data_dir))
+                                        plot=i == plot_index and self.params.plot)
 
                     if i == plot_index:
                         y_strs = HW4.to_str(y)
                         out_strs = HW4.decode(output)
-                        print('Training: GT', y_strs[0], 'Generated', out_strs[0])
+                        print('Sample GT', y_strs[0])
+                        print('Sample Training: Generated', out_strs[0])
+                        print('Sample Training Distance', Levenshtein.distance(y_strs[0], out_strs[0]))
 
                     loss = self.criterion(output, y) / self.params.B
                     total_loss += loss
@@ -256,7 +258,9 @@ class HW4(Learning):
                     out_strs = HW4.decode(output)
 
                     if i == plot_index:
-                        print('Validation GT', y_strs[0], 'Generated', out_strs[0])
+                        print('Sample GT', y_strs[0])
+                        print('Sample Valid: Generated', out_strs[0])
+                        print('Sample Valid Distance', Levenshtein.distance(y_strs[0], out_strs[0]))
 
                     for y_str, out_str in zip(y_strs, out_strs):
                         total_dist += Levenshtein.distance(y_str, out_str)
@@ -296,7 +300,7 @@ def main(args):
                        layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
                        schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
                        embedding_dim=args.embedding, attention_dim=args.attention,
-                       forcing_tuple=args.forcing,
+                       forcing_tuple=args.forcing, plot=args.plot,
                        data_dir='C:\\DLData\\11785_data\\HW4' + (
                            '\\hw4p2_simple' if args.toy else ''))
 
@@ -316,7 +320,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=32, type=int)
+    parser.add_argument('--batch', help='Batch Size', default=128, type=int)
     parser.add_argument('--dropout', default=0, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--device', default='cuda:0')
@@ -330,12 +334,13 @@ if __name__ == '__main__':
     parser.add_argument('--he', default=256, type=int)
     parser.add_argument('--hd', default=512, type=int)
     parser.add_argument('--schedule', default=5, type=int)
-    parser.add_argument('--decay', default=5e-6, type=float)
+    parser.add_argument('--decay', default=0, type=float)
     parser.add_argument('--optimizer', default='Adam')
     parser.add_argument('--embedding', default=256, type=int)
     parser.add_argument('--attention', default=128, type=int)
     parser.add_argument('--forcing', default='(0.9,0.6,20)')
     parser.add_argument('--toy', action='store_true')
+    parser.add_argument('--plot', action='store_true')
     args = parser.parse_args()
     if args.toy:
         letter2index = {"<eos>": 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8,
