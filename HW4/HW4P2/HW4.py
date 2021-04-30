@@ -117,6 +117,8 @@ class HW4(Learning):
                 2] + self.params.forcing[0]
         return self.params.forcing[1]
 
+        # return 0.9
+
     def _load_train(self):
         train_set = DataSetHW4(os.path.join(self.params.data_dir, 'train.npy'),
                                os.path.join(self.params.data_dir, 'train_labels.npy'))
@@ -169,7 +171,7 @@ class HW4(Learning):
         return results
 
     def train(self, checkpoint_interval=5):
-        self._validate(0)
+        # self._validate(0)
         summary_flag = True
         if self.train_loader is None:
             self._load_train()
@@ -180,6 +182,9 @@ class HW4(Learning):
             for epoch in range(self.init_epoch + 1, self.params.max_epoch):
                 total_loss = torch.zeros(1, device=self.device)
                 # total_acc = torch.zeros(1, device=self.device)
+
+                plot_index = np.random.randint(0, len(self.train_loader))
+
                 for i, batch in enumerate(tqdm(self.train_loader)):
                     x = batch[0].to(self.device)
                     lengths_x = batch[1]
@@ -192,16 +197,17 @@ class HW4(Learning):
                     #     summary_flag = False
 
                     # (B,e,To)
-                    output = self.model(x, lengths_x, y, self.forcing_p(epoch))
+                    output = self.model(x, lengths_x, y, self.forcing_p(epoch),
+                                        plot=i == plot_index)
 
-                    loss = self.criterion(output, y)
+                    loss = self.criterion(output, y) / self.params.B
                     total_loss += loss
 
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
 
-                loss_item = total_loss.item() / (i + 1) / self.params.B
+                loss_item = total_loss.item() / (i + 1)
 
                 self.writer.add_scalar('Loss/Train', loss_item, epoch)
 
@@ -249,8 +255,8 @@ class HW4(Learning):
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Distance/Validation', dist_item, epoch)
 
-                print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
-                      dist_item)
+                # print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
+                #       dist_item)
 
     def test(self):
         if self.test_loader is None:
@@ -307,7 +313,7 @@ if __name__ == '__main__':
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
-    parser.add_argument('--save', default=10, type=int, help='Checkpoint interval')
+    parser.add_argument('--save', default=2, type=int, help='Checkpoint interval')
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--le', default=3, type=int)
     parser.add_argument('--he', default=256, type=int)

@@ -1,3 +1,5 @@
+import numpy as np
+
 from utils.base import *
 from HW4 import ParamsHW4
 import torch
@@ -168,18 +170,17 @@ class Decoder1(Decoder):
         :param key: (B,Tout_e,a)
         :param value: (B,Tout_e,a)
         :param mask: (B,Toe)
-        :return: query (B,a), context', hidden1', hidden2'
+        :return: query (B,a), context', hidden1', hidden2', attention (B,a)
         """
         input_word_embedding = self.embedding(input_words)
 
         h1, c1 = self.lstm1(torch.cat([input_word_embedding, context], dim=-1), hidden1)
         query, c2 = self.lstm2(h1, hidden2)
         context, attention = self.attention(query, key, value, mask)
-        # plot_attention(attention)
 
-        return query, context, (h1, c1), (query, c2)
+        return query, context, (h1, c1), (query, c2), attention
 
-    def forward(self, k, v, encoded_lengths, gt, p_tf):
+    def forward(self, k, v, encoded_lengths, gt, p_tf, plot=False):
         """
 
         :param k: (B,Td,a)
@@ -187,6 +188,7 @@ class Decoder1(Decoder):
         :param encoded_lengths:
         :param gt: (B,To)
         :param p_tf:
+        :param plot:
         :return: (B,vocab_size,To)
         """
 
@@ -205,18 +207,26 @@ class Decoder1(Decoder):
 
         max_len = 600 if gt is None else gt.shape[1]
 
+        attention_to_plot = torch.zeros((max_len, T), device=self.param.device)
+
         for i in range(max_len):
             if gt is not None and torch.rand(1).item() < p_tf:
                 input_words = gt[:, i]
             else:
                 input_words = prediction_chars
 
-            query, context, hidden1, hidden2 = self._forward_step(input_words, context, hidden1,
-                                                                  hidden2, k, v, mask)
+            query, context, hidden1, hidden2, attention = self._forward_step(input_words, context,
+                                                                             hidden1, hidden2, k, v,
+                                                                             mask)
+
+            attention_to_plot[i, :] = attention[0]
 
             prediction_raw = self.character_prob(torch.cat([query, context], dim=1))  # (B,vocab)
             prediction_chars = prediction_raw.argmax(dim=-1)
             predictions.append(prediction_raw)
+
+        if plot:
+            plot_attention(attention_to_plot)
 
         return torch.stack(predictions, dim=2)  # (B,vocab,To)
 
@@ -227,7 +237,12 @@ class Model1(nn.Module):
         self.encoder = Encoder1(param)
         self.decoder = Decoder1(param)
 
-    def forward(self, x, x_len, gt=None, p_tf=0.9):
+        for weight in self.parameters():
+            nn.init.uniform_(weight, -1 / np.sqrt(512), 1 / np.sqrt(512))
+
+        nn.init.uniform_(self.decoder.embedding.weight, -0.1, 0.1)
+
+    def forward(self, x, x_len, gt=None, p_tf=0.9, plot=False):
         key, value, encoder_len = self.encoder(x, x_len)
-        predictions = self.decoder(key, value, encoder_len, gt, p_tf)
+        predictions = self.decoder(key, value, encoder_len, gt, p_tf, plot)
         return predictions
