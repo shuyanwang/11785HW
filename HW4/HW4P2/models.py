@@ -141,7 +141,7 @@ class DotAttention(Attention):
 
         context = torch.bmm(attention, value).squeeze(1)  # (B,a)
 
-        return context, attention
+        return context, attention.squeeze(1)
 
 
 class Decoder1(Decoder):
@@ -174,7 +174,8 @@ class Decoder1(Decoder):
 
         h1, c1 = self.lstm1(torch.cat([input_word_embedding, context], dim=-1), hidden1)
         query, c2 = self.lstm2(h1, hidden2)
-        context, _ = self.attention(query, key, value, mask)
+        context, attention = self.attention(query, key, value, mask)
+        # plot_attention(attention)
 
         return query, context, (h1, c1), (query, c2)
 

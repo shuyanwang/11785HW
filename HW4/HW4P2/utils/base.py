@@ -1,10 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.utils.data
+from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from tqdm import tqdm
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 class SingleLoss(nn.Module, ABC):
@@ -83,6 +86,14 @@ class Model(nn.Module, ABC):
     @abstractmethod
     def forward(self, x: torch.Tensor):
         pass
+
+
+def plot_attention(attention: Tensor):
+    attention = attention.cpu().detach().numpy()
+
+    plt.clf()
+    sns.heatmap(attention, cmap='GnBu')
+    plt.show()
 
 
 class Learning(ABC):

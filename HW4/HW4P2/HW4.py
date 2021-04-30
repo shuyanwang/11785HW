@@ -3,6 +3,7 @@ import torch.utils.data
 import Levenshtein
 import argparse
 import numpy as np
+from torch.nn import functional
 
 from torchinfo import summary
 
@@ -170,6 +171,7 @@ class HW4(Learning):
         for b, y_b in enumerate(y):
             chars = []
             for char in y_b:
+                char = char.item()
                 if char == 0:
                     break
                 chars.append(index2letter[char])
@@ -178,7 +180,7 @@ class HW4(Learning):
         return results
 
     def train(self, checkpoint_interval=5):
-        # self._validate(0)
+        self._validate(0)
         summary_flag = True
         if self.train_loader is None:
             self._load_train()
@@ -237,11 +239,12 @@ class HW4(Learning):
                 for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
                     lengths_x = batch[1]
-                    y = batch[2].to(self.device)
+                    y = batch[2]
                     # lengths_y = batch[3]
 
                     # (B,e,To)
                     output = self.model(x, lengths_x)
+                    y = functional.pad(y, (0, output.shape[2] - y.shape[1])).to(self.device)
 
                     loss = self.criterion(output, y)
                     total_loss += loss
