@@ -34,7 +34,8 @@ class ParamsHW4(Params):
                 schedule_int) + 'decay' + str(decay) + optimizer + 'drop' + str(
                 self.dropout) + 'le' + str(layer_encoder) + 'he' + str(
                 hidden_encoder) + 'hd' + str(hidden_decoder) + 'emb' + str(
-                embedding_dim) + 'att' + str(attention_dim) + 'forcing' + forcing_tuple
+                embedding_dim) + 'att' + str(attention_dim) + 'forcing' + forcing_tuple + \
+                   ('TOY' if 'simple' in data_dir else '')
 
     def __str__(self):
         return self.str
@@ -198,7 +199,13 @@ class HW4(Learning):
 
                     # (B,e,To)
                     output = self.model(x, lengths_x, y, self.forcing_p(epoch),
-                                        plot=i == plot_index)
+                                        plot=i == plot_index and (
+                                                    'simple' not in self.params.data_dir))
+
+                    if i == plot_index:
+                        y_strs = HW4.to_str(y)
+                        out_strs = HW4.decode(output)
+                        print('Training: GT', y_strs[0], 'Generated', out_strs[0])
 
                     loss = self.criterion(output, y) / self.params.B
                     total_loss += loss
@@ -230,6 +237,7 @@ class HW4(Learning):
                 self.model.eval()
                 total_loss = torch.zeros(1, device=self.device)
                 total_dist = torch.zeros(1, device=self.device)
+                plot_index = np.random.randint(0, len(self.valid_loader))
 
                 for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
@@ -241,22 +249,25 @@ class HW4(Learning):
                     output = self.model(x, lengths_x)
                     y = functional.pad(y, (0, output.shape[2] - y.shape[1])).to(self.device)
 
-                    loss = self.criterion(output, y)
+                    loss = self.criterion(output, y) / self.params.B
                     total_loss += loss
 
                     y_strs = HW4.to_str(y)
                     out_strs = HW4.decode(output)
 
+                    if i == plot_index:
+                        print('Validation GT', y_strs[0], 'Generated', out_strs[0])
+
                     for y_str, out_str in zip(y_strs, out_strs):
                         total_dist += Levenshtein.distance(y_str, out_str)
 
-                loss_item = total_loss.item() / (i + 1) / self.params.B
+                loss_item = total_loss.item() / (i + 1)
                 dist_item = total_dist.item() / (i + 1) / self.params.B
                 self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Distance/Validation', dist_item, epoch)
 
-                # print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
-                #       dist_item)
+                print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
+                      dist_item)
 
     def test(self):
         if self.test_loader is None:
