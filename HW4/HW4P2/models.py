@@ -187,7 +187,7 @@ class Decoder1(Decoder):
         :param encoded_lengths:
         :param gt: (B,To)
         :param p_tf:
-        :return: (B,o,To)
+        :return: (B,vocab_size,To)
         """
 
         B, T, a = k.shape
@@ -205,30 +205,20 @@ class Decoder1(Decoder):
 
         max_len = 600 if gt is None else gt.shape[1]
 
-        # if gt is None:
-        #     max_len = 600
-        #     gt_embeddings = None
-        # else:
-        #     max_len = gt.shape[1]
-        #     gt_embeddings = self.embedding(gt)  # (B,To,e)
-
         for i in range(max_len):
-            if gt is not None:
-                if torch.rand(1).item() < p_tf:
-                    input_words = gt[:, i]
-                else:
-                    input_words = prediction_chars
+            if gt is not None and torch.rand(1).item() < p_tf:
+                input_words = gt[:, i]
             else:
                 input_words = prediction_chars
 
             query, context, hidden1, hidden2 = self._forward_step(input_words, context, hidden1,
                                                                   hidden2, k, v, mask)
 
-            prediction_raw = self.character_prob(torch.cat([query, context], dim=1))  # (B,o)
+            prediction_raw = self.character_prob(torch.cat([query, context], dim=1))  # (B,vocab)
             prediction_chars = prediction_raw.argmax(dim=-1)
             predictions.append(prediction_raw)
 
-        return torch.stack(predictions, dim=2)
+        return torch.stack(predictions, dim=2)  # (B,vocab,To)
 
 
 class Model1(nn.Module):

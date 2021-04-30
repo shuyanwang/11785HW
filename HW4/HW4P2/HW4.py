@@ -9,22 +9,11 @@ from torchinfo import summary
 
 from models import *
 
-letter2index = {"<eos>": 0, "'": 1, "a": 2, "b": 3, "c": 4, "d": 5, "e": 6, "f": 7, "g": 8, "h": 9,
-                "i": 10, "j": 11,
-                "k": 12, "l": 13, "m": 14, "n": 15, "o": 16, "p": 17, "q": 18, "r": 19, "s": 20,
-                "t": 21, "u": 22,
-                "v": 23, "w": 24, "x": 25, "y": 26, "z": 27, " ": 28}
-
-index2letter = {letter2index[key]: key for key in letter2index}
-
-num_workers = 8
-
 
 class ParamsHW4(Params):
     def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder,
                  hidden_encoder, hidden_decoder, schedule_int, decay, optimizer,
-                 forcing_tuple, max_epoch=20001,
-                 data_dir='C:\\DLData\\11785_data\\HW4'):
+                 forcing_tuple, data_dir, max_epoch=20001):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=len(index2letter),
                          data_dir=data_dir, device=device, input_dims=(40,))
@@ -115,7 +104,7 @@ class HW4(Learning):
         super().__init__(params, model, None, None)
         self.decoder = None
 
-        self.criterion = nn.CrossEntropyLoss(ignore_index=0).to(params.device)
+        self.criterion = nn.CrossEntropyLoss(ignore_index=0, reduction='sum').to(params.device)
         optimizer = eval('torch.optim.' + params.optimizer)
         self.optimizer = optimizer(self.model.parameters(), lr=self.params.lr,
                                    weight_decay=self.params.decay)
@@ -285,7 +274,30 @@ class HW4(Learning):
                             f.write('\n')
 
 
-def main():
+def main(args):
+    params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr, device=args.device,
+                       layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
+                       schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
+                       embedding_dim=args.embedding, attention_dim=args.attention,
+                       forcing_tuple=args.forcing,
+                       data_dir='C:\\DLData\\11785_data\\HW4' + (
+                           '\\hw4p2_simple' if args.toy else ''))
+
+    model = eval(args.model + '(params)')
+    learner = HW4(params, model)
+    if args.epoch >= 0:
+        if args.load == '':
+            learner.load_model(args.epoch)
+        else:
+            learner.load_model(args.epoch, args.load)
+
+    if args.train:
+        learner.train(checkpoint_interval=args.save)
+    if args.test:
+        learner.test()
+
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch', help='Batch Size', default=32, type=int)
     parser.add_argument('--dropout', default=0, type=float)
@@ -305,29 +317,24 @@ def main():
     parser.add_argument('--optimizer', default='Adam')
     parser.add_argument('--embedding', default=256, type=int)
     parser.add_argument('--attention', default=128, type=int)
-    parser.add_argument('--forcing', default='(0.9,0.1,20)')
-
+    parser.add_argument('--forcing', default='(0.9,0.6,20)')
+    parser.add_argument('--toy', action='store_true')
     args = parser.parse_args()
+    if args.toy:
+        letter2index = {"<eos>": 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8,
+                        "i": 9, "j": 10, "k": 11, "l": 12, "m": 13, "n": 14, "o": 15, "p": 16,
+                        "q": 17,
+                        "r": 18, "s": 19, "t": 20, "u": 21, "v": 22, "w": 23, "x": 24, "y": 25,
+                        " ": 26}
+    else:
+        letter2index = {"<eos>": 0, "'": 1, "a": 2, "b": 3, "c": 4, "d": 5, "e": 6, "f": 7, "g": 8,
+                        "h": 9, "i": 10, "j": 11, "k": 12, "l": 13, "m": 14, "n": 15, "o": 16,
+                        "p": 17,
+                        "q": 18, "r": 19, "s": 20, "t": 21, "u": 22, "v": 23, "w": 24, "x": 25,
+                        "y": 26,
+                        "z": 27, " ": 28}
 
-    params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr, device=args.device,
-                       layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
-                       schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
-                       embedding_dim=args.embedding, attention_dim=args.attention,
-                       forcing_tuple=args.forcing)
+    index2letter = {letter2index[key]: key for key in letter2index}
 
-    model = eval(args.model + '(params)')
-    learner = HW4(params, model)
-    if args.epoch >= 0:
-        if args.load == '':
-            learner.load_model(args.epoch)
-        else:
-            learner.load_model(args.epoch, args.load)
-
-    if args.train:
-        learner.train(checkpoint_interval=args.save)
-    if args.test:
-        learner.test()
-
-
-if __name__ == '__main__':
-    main()
+    num_workers = 8
+    main(args)
