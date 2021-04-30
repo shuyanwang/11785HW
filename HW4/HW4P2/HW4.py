@@ -2,10 +2,7 @@ import os
 import torch.utils.data
 import Levenshtein
 import argparse
-import numpy as np
 from torch.nn import functional
-
-from torchinfo import summary
 
 from models import *
 
@@ -176,7 +173,6 @@ class HW4(Learning):
 
     def train(self, checkpoint_interval=5):
         # self._validate(0)
-        summary_flag = True
         if self.train_loader is None:
             self._load_train()
 
@@ -193,11 +189,6 @@ class HW4(Learning):
                     lengths_x = batch[1]
                     y = batch[2].to(self.device)  # (B,To)
                     lengths_y = batch[3]  # (B)
-
-                    # if summary_flag:
-                    #     summary(self.model, input_data=[x, lengths_x], depth=12,
-                    #             device=self.params.device)
-                    #     summary_flag = False
 
                     # (B,e,To)
                     output = self.model(x, lengths_x, y, self.forcing_p(epoch),
@@ -248,7 +239,6 @@ class HW4(Learning):
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
-                # total_loss = torch.zeros(1, device=self.device)
                 total_dist = torch.zeros(1, device=self.device)
                 plot_index = np.random.randint(0, len(self.valid_loader))
 
@@ -263,9 +253,6 @@ class HW4(Learning):
                     y = functional.pad(y, (0, output.shape[2] - y.shape[1]), value=PAD_INDEX).to(
                             self.device)
 
-                    # loss = self.criterion(output, y) / self.params.B
-                    # total_loss += loss
-
                     y_strs = HW4.to_str(y)
                     out_strs = HW4.decode(output)
 
@@ -278,13 +265,8 @@ class HW4(Learning):
                     for y_str, out_str in zip(y_strs, out_strs):
                         total_dist += Levenshtein.distance(y_str, out_str)
 
-                # loss_item = total_loss.item() / (i + 1)
                 dist_item = total_dist.item() / (i + 1) / self.params.B
-                # self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Distance/Validation', dist_item, epoch)
-
-                # print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
-                #       dist_item)
                 print('epoch:', epoch, 'Validation Distance:', dist_item)
 
     def test(self):
