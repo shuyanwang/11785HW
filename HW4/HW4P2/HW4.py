@@ -9,6 +9,8 @@ from torchinfo import summary
 
 from models import *
 
+PAD_INDEX = 0  # CANNOT BE NEGATIVE, OTHERWISE EMBEDDING WOULD CAUSE ERROR
+
 
 class ParamsHW4(Params):
     def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder,
@@ -85,7 +87,7 @@ def collate_train_val(data):
         y_lengths.append(item[1].shape[0])
 
     pad_x = nn.utils.rnn.pad_sequence(x, batch_first=True)
-    pad_y = nn.utils.rnn.pad_sequence(y, batch_first=True)
+    pad_y = nn.utils.rnn.pad_sequence(y, batch_first=True, padding_value=PAD_INDEX)
 
     return pad_x, torch.as_tensor(x_lengths), pad_y, torch.as_tensor(y_lengths)
 
@@ -105,8 +107,8 @@ class HW4(Learning):
     def __init__(self, params: ParamsHW4, model):
         super().__init__(params, model, None, None)
         self.decoder = None
-
-        self.criterion = nn.CrossEntropyLoss(ignore_index=0, reduction='sum').to(params.device)
+        #### DO NOT USE IGNORE_INDEX
+        self.criterion = nn.CrossEntropyLoss(reduction='none').to(params.device)
         optimizer = eval('torch.optim.' + params.optimizer)
         self.optimizer = optimizer(self.model.parameters(), lr=self.params.lr,
                                    weight_decay=self.params.decay)
@@ -182,8 +184,7 @@ class HW4(Learning):
         with torch.cuda.device(self.device):
             self.model.train()
             for epoch in range(self.init_epoch + 1, self.params.max_epoch):
-                total_loss = torch.zeros(1, device=self.device)
-                # total_acc = torch.zeros(1, device=self.device)
+                total_loss = 0
 
                 plot_index = np.random.randint(0, len(self.train_loader))
 
@@ -191,7 +192,7 @@ class HW4(Learning):
                     x = batch[0].to(self.device)
                     lengths_x = batch[1]
                     y = batch[2].to(self.device)  # (B,To)
-                    # lengths_y = batch[3]
+                    lengths_y = batch[3]  # (B)
 
                     # if summary_flag:
                     #     summary(self.model, input_data=[x, lengths_x], depth=12,
@@ -205,22 +206,32 @@ class HW4(Learning):
                     if i == plot_index:
                         y_strs = HW4.to_str(y)
                         out_strs = HW4.decode(output)
+                        print()
                         print('Sample GT', y_strs[0])
                         print('Sample Training: Generated', out_strs[0])
-                        print('Sample Training Distance', Levenshtein.distance(y_strs[0], out_strs[0]))
+                        print('Sample Training Distance',
+                              Levenshtein.distance(y_strs[0], out_strs[0]))
 
-                    loss = self.criterion(output, y) / self.params.B
-                    total_loss += loss
+                    loss = self.criterion(output, y)  # (B,T)
+
+                    mask = torch.arange(0, y.shape[1]).unsqueeze(1) < lengths_y.unsqueeze(0)
+                    mask = mask.transpose(0, 1).to(self.device)  # (B,T)
+
+                    loss[torch.logical_not(mask)] = 0
+
+                    loss_item = torch.sum(loss) / self.params.B
+
+                    total_loss += loss_item.item()
 
                     self.optimizer.zero_grad()
-                    loss.backward()
+                    loss_item.backward()
                     self.optimizer.step()
 
-                loss_item = total_loss.item() / (i + 1)
+                total_loss /= (i + 1)
 
-                self.writer.add_scalar('Loss/Train', loss_item, epoch)
+                self.writer.add_scalar('Loss/Train', total_loss, epoch)
 
-                print('epoch:', epoch, 'Training Loss:', "%.5f" % loss_item)
+                print('epoch:', epoch, 'Training Loss:', "%.5f" % total_loss)
 
                 self._validate(epoch)
                 self.model.train()
@@ -237,27 +248,29 @@ class HW4(Learning):
         with torch.cuda.device(self.device):
             with torch.no_grad():
                 self.model.eval()
-                total_loss = torch.zeros(1, device=self.device)
+                # total_loss = torch.zeros(1, device=self.device)
                 total_dist = torch.zeros(1, device=self.device)
                 plot_index = np.random.randint(0, len(self.valid_loader))
 
                 for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
                     lengths_x = batch[1]
-                    y = batch[2]
+                    y = batch[2]  # (B,To)
                     # lengths_y = batch[3]
 
                     # (B,e,To)
                     output = self.model(x, lengths_x)
-                    y = functional.pad(y, (0, output.shape[2] - y.shape[1])).to(self.device)
+                    y = functional.pad(y, (0, output.shape[2] - y.shape[1]), value=PAD_INDEX).to(
+                            self.device)
 
-                    loss = self.criterion(output, y) / self.params.B
-                    total_loss += loss
+                    # loss = self.criterion(output, y) / self.params.B
+                    # total_loss += loss
 
                     y_strs = HW4.to_str(y)
                     out_strs = HW4.decode(output)
 
                     if i == plot_index:
+                        print()
                         print('Sample GT', y_strs[0])
                         print('Sample Valid: Generated', out_strs[0])
                         print('Sample Valid Distance', Levenshtein.distance(y_strs[0], out_strs[0]))
@@ -265,13 +278,14 @@ class HW4(Learning):
                     for y_str, out_str in zip(y_strs, out_strs):
                         total_dist += Levenshtein.distance(y_str, out_str)
 
-                loss_item = total_loss.item() / (i + 1)
+                # loss_item = total_loss.item() / (i + 1)
                 dist_item = total_dist.item() / (i + 1) / self.params.B
-                self.writer.add_scalar('Loss/Validation', loss_item, epoch)
+                # self.writer.add_scalar('Loss/Validation', loss_item, epoch)
                 self.writer.add_scalar('Distance/Validation', dist_item, epoch)
 
-                print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
-                      dist_item)
+                # print('epoch:', epoch, 'Validation Loss:', "%.5f" % loss_item, 'Distance:',
+                #       dist_item)
+                print('epoch:', epoch, 'Validation Distance:', dist_item)
 
     def test(self):
         if self.test_loader is None:
