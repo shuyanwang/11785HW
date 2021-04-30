@@ -68,8 +68,9 @@ class DataSetHW4(torch.utils.data.Dataset):
         :return: (T_in,40), Optional[(T_out,)]
         """
         if self.Y is not None:
-            return torch.tensor(self.X[index].astype(np.float32)), torch.tensor(self.Y[index])
-        return torch.tensor(self.X[index].astype(np.float32))
+            return torch.tensor(self.X[index], dtype=torch.float), torch.tensor(
+                    self.Y[index], dtype=torch.long)
+        return torch.tensor(self.X[index], dtype=torch.float)
 
     def __len__(self):
         return self.N
@@ -286,7 +287,7 @@ def main():
     parser.add_argument('--batch', help='Batch Size', default=32, type=int)
     parser.add_argument('--dropout', default=0, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
-    parser.add_argument('--gpu_id', help='GPU ID (0/1)', default='0')
+    parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--model', default='Model1', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
@@ -305,8 +306,7 @@ def main():
 
     args = parser.parse_args()
 
-    params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr,
-                       device='cuda:' + args.gpu_id,
+    params = ParamsHW4(B=args.batch, dropout=args.dropout, lr=args.lr, device=args.device,
                        layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
                        schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
                        embedding_dim=args.embedding, attention_dim=args.attention,

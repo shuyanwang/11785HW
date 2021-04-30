@@ -101,7 +101,7 @@ class Learning(ABC):
 
         self.label_to_class = None
 
-        self.model = model.cuda(self.device)
+        self.model = model.to(self.device)
         if params.is_double:
             self.model.double()
 

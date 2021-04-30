@@ -172,11 +172,11 @@ class Decoder1(Decoder):
         """
         input_word_embedding = self.embedding(input_words)
 
-        x, hidden1 = self.lstm1(torch.cat([input_word_embedding, context], dim=-1), hidden1)
-        query, hidden2 = self.lstm2(x, hidden2)
+        h1, c1 = self.lstm1(torch.cat([input_word_embedding, context], dim=-1), hidden1)
+        query, c2 = self.lstm2(h1, hidden2)
         context, _ = self.attention(query, key, value, mask)
 
-        return query, context, hidden1, hidden2
+        return query, context, (h1, c1), (query, c2)
 
     def forward(self, k, v, encoded_lengths, gt, p_tf):
         """
@@ -202,17 +202,19 @@ class Decoder1(Decoder):
         prediction_chars = torch.zeros(B, dtype=torch.long).to(
                 self.param.device)  # <eol> at the beginning
 
-        if gt is None:
-            max_len = 600
-            gt_embeddings = None
-        else:
-            max_len = gt.shape[1]
-            gt_embeddings = self.embedding(gt)  # (B,To,e)
+        max_len = 600 if gt is None else gt.shape[1]
+
+        # if gt is None:
+        #     max_len = 600
+        #     gt_embeddings = None
+        # else:
+        #     max_len = gt.shape[1]
+        #     gt_embeddings = self.embedding(gt)  # (B,To,e)
 
         for i in range(max_len):
             if gt is not None:
                 if torch.rand(1).item() < p_tf:
-                    input_words = gt_embeddings[:, i, :].argmax(dim=-1)
+                    input_words = gt[:, i]
                 else:
                     input_words = prediction_chars
             else:
