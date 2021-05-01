@@ -12,7 +12,7 @@ PAD_INDEX = 0  # CANNOT BE NEGATIVE, OTHERWISE EMBEDDING WOULD CAUSE ERROR
 class ParamsHW4(Params):
     def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder,
                  hidden_encoder, hidden_decoder, schedule_int, decay, optimizer,
-                 forcing_tuple, data_dir, max_epoch=20001, plot=False):
+                 forcing_tuple, data_dir, max_epoch=20001, plot=False, pretrain=False):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=len(index2letter),
                          data_dir=data_dir, device=device, input_dims=(40,))
@@ -27,6 +27,7 @@ class ParamsHW4(Params):
         self.schedule = schedule_int
         self.decay = decay
         self.optimizer = optimizer
+        self.pretrain = pretrain
 
         assert embedding_dim == self.attention_dim * 2
 
@@ -35,7 +36,7 @@ class ParamsHW4(Params):
                 self.dropout) + 'le' + str(layer_encoder) + 'he' + str(
                 hidden_encoder) + 'hd' + str(hidden_decoder) + 'emb' + str(
                 embedding_dim) + 'att' + str(attention_dim) + 'forcing' + forcing_tuple + \
-                   ('TOY' if 'simple' in data_dir else '')
+                   ('TOY' if 'simple' in data_dir else '') + ('pre' if pretrain else '')
 
     def __str__(self):
         return self.str
@@ -71,9 +72,9 @@ def collate_train_val(data):
     """
 
     :param data: List of Tuple
-    :return: packed_x, pad_y, lengths_y
+    :return: pad_x, x_lengths, pad_y, torch.as_tensor(y_lengths)
     """
-    # x_lengths = [x.shape[0] for (x, y) in data]
+    x_lengths = [x.shape[0] for (x, y) in data]
     y_lengths = [y.shape[0] for (x, y) in data]
     x_items = [x for (x, y) in data]
     y_items = [y for (x, y) in data]
@@ -83,22 +84,24 @@ def collate_train_val(data):
     #     x_lengths.append(item[0].shape[0])
     #     y_lengths.append(item[1].shape[0])
 
-    # pad_x = nn.utils.rnn.pad_sequence(x_items, batch_first=True)
-    # pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
-
-    pack_x = nn.utils.rnn.pack_sequence(x_items, enforce_sorted=False)
+    pad_x = nn.utils.rnn.pad_sequence(x_items, batch_first=True)
     pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
 
-    return pack_x, pad_y, torch.as_tensor(y_lengths)
+    # pack_x = nn.utils.rnn.pack_sequence(x_items, enforce_sorted=False)
+    # pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
+
+    return pad_x, torch.as_tensor(x_lengths), pad_y, torch.as_tensor(y_lengths)
 
 
 def collate_test(data):
     """
 
     :param data:
-    :return: pack_x
+    :return: pad_x
     """
-    return nn.utils.rnn.pack_sequence(data, enforce_sorted=False)
+
+    x_lengths = [x.shape[0] for x in data]
+    return nn.utils.rnn.pad_sequence(data, batch_first=True), x_lengths
 
 
 class HW4(Learning):
@@ -177,7 +180,7 @@ class HW4(Learning):
         return results
 
     def train(self, checkpoint_interval=5):
-        # self._validate(0)
+        self._validate(0)
         if self.train_loader is None:
             self._load_train()
 
@@ -191,19 +194,21 @@ class HW4(Learning):
 
                 for i, batch in enumerate(tqdm(self.train_loader)):
                     x = batch[0].to(self.device)
-                    y = batch[1].to(self.device)  # (B,To)
-                    lengths_y = batch[2]  # (B)
+                    lengths_x = batch[1]
+                    y = batch[2].to(self.device)  # (B,To)
+                    lengths_y = batch[3]  # (B)
 
                     # (B,e,To)
-                    output = self.model(x, gt=y, p_tf=self.forcing_p(epoch),
-                                        plot=i == plot_index and self.params.plot)
+                    output = self.model(x, lengths_x, gt=y, p_tf=self.forcing_p(epoch),
+                                        plot=i == plot_index and self.params.plot,
+                                        pretrain=self.params.pretrain and epoch < 15)
 
                     if i == plot_index:
                         y_strs = HW4.to_str(y)
                         out_strs = HW4.decode(output)
                         print()
                         print('Sample GT', y_strs[0])
-                        print('Sample Training: Generated', out_strs[0])
+                        print('Sample OG', out_strs[0])
                         print('Sample Training Distance',
                               Levenshtein.distance(y_strs[0], out_strs[0]))
 
@@ -248,10 +253,11 @@ class HW4(Learning):
 
                 for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
-                    y = batch[1]  # (B,To)
+                    x_lengths = batch[1]
+                    y = batch[2]  # (B,To)
 
                     # (B,e,To)
-                    output = self.model(x)
+                    output = self.model(x, x_lengths)
 
                     y_strs = HW4.to_str(y)
                     out_strs = HW4.decode(output)
@@ -259,7 +265,7 @@ class HW4(Learning):
                     if i == plot_index:
                         print()
                         print('Sample GT', y_strs[0])
-                        print('Sample Valid: Generated', out_strs[0])
+                        print('Sample OG', out_strs[0])
                         print('Sample Valid Distance', Levenshtein.distance(y_strs[0], out_strs[0]))
 
                     for y_str, out_str in zip(y_strs, out_strs):
@@ -296,7 +302,7 @@ def main(args):
                        layer_encoder=args.le, hidden_encoder=args.he, hidden_decoder=args.hd,
                        schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
                        embedding_dim=args.embedding, attention_dim=args.attention,
-                       forcing_tuple=args.forcing, plot=args.plot,
+                       forcing_tuple=args.forcing, plot=args.plot, pretrain=args.pretrain,
                        data_dir='C:\\DLData\\11785_data\\HW4' + (
                            '\\hw4p2_simple' if args.toy else ''))
 
@@ -317,7 +323,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch', help='Batch Size', default=128, type=int)
-    parser.add_argument('--dropout', default=0, type=float)
+    parser.add_argument('--dropout', default=0.4, type=float)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--model', default='Model1', help='Model Name')
@@ -334,9 +340,10 @@ if __name__ == '__main__':
     parser.add_argument('--optimizer', default='Adam')
     parser.add_argument('--embedding', default=256, type=int)
     parser.add_argument('--attention', default=128, type=int)
-    parser.add_argument('--forcing', default='(0.9,0.6,20)')
+    parser.add_argument('--forcing', default='(0.9,0.8,20)')
     parser.add_argument('--toy', action='store_true')
     parser.add_argument('--plot', action='store_true')
+    parser.add_argument('--pretrain', action='store_true')
     args = parser.parse_args()
     if args.toy:
         letter2index = {"<eos>": 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8,
