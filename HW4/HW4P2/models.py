@@ -212,8 +212,8 @@ class Decoder1(Decoder):
         predictions = torch.zeros((B, self.param.output_channels, To), device=self.param.device)
 
         for i in range(To):
-            if gt is not None and torch.rand(1).item() < p_tf:
-                input_words = gt[:, i]
+            if gt is not None and torch.rand(1).item() < p_tf and i > 0:
+                input_words = gt[:, i - 1]
             else:
                 input_words = prediction_chars
 
@@ -273,7 +273,7 @@ class Decoder2(Decoder):
         :param key: (B,Tout_e,a)
         :param value: (B,Tout_e,a)
         :param mask: (B,Toe)
-        :return: query (B,a), context', hidden1', hidden2', attention (B,a)
+        :return: query (B,a), context', hidden1', attention (B,a)
         """
         input_word_embedding = self.embedding(input_words)
 
@@ -313,8 +313,8 @@ class Decoder2(Decoder):
         predictions = torch.zeros((B, self.param.output_channels, To), device=self.param.device)
 
         for i in range(To):
-            if gt is not None and torch.rand(1).item() < p_tf:
-                input_words = gt[:, i]
+            if gt is not None and torch.rand(1).item() < p_tf and i > 0:
+                input_words = gt[:, i - 1]
             else:
                 input_words = prediction_chars
 
@@ -341,8 +341,8 @@ class Model2(nn.Module):
         self.encoder = Encoder1(param)
         self.decoder = Decoder2(param)
 
-        # for weight in self.parameters():
-        #     nn.init.uniform_(weight, -1 / np.sqrt(512), 1 / np.sqrt(512))
+        for weight in self.parameters():
+            nn.init.uniform_(weight, -1 / np.sqrt(512), 1 / np.sqrt(512))
 
         nn.init.uniform_(self.decoder.embedding.weight, -0.1, 0.1)
 

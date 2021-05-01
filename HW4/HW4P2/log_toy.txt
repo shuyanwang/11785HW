@@ -1,0 +1,263 @@
+C:\Users\Zongyue\anaconda3\envs\11785\python.exe C:/Users/Zongyue/OneDrive/Documents/CMU/21Spring/11785/HW/HW4/HW4P2/hw4.py --train --device cuda:0 --toy --le 0 --save 1 --plot --batch 128 --model Model2
+Model2_b128lr0.001s5decay0Adamdrop0le0he256hd512emb256att128forcing(0.9,0.6,20)TOY
+C:\DLData\11785_data\HW4\hw4p2_simple\train.npy 10000
+ 77%|███████▋  | 61/79 [00:23<00:02,  6.18it/s]
+Sample GT kismlaqfmjkdwjcdwulniyb
+Sample Training: Generated ffffffffcccccacccaaccaaa
+Sample Training Distance 22
+100%|██████████| 79/79 [00:26<00:00,  2.93it/s]
+epoch: 1 Training Loss: 84.01751
+C:\DLData\11785_data\HW4\hw4p2_simple\dev.npy 100
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated aaaaaaaaaaaaaaaaa
+Sample Valid Distance 28
+epoch: 1 Validation Distance: 18.953125
+ 87%|████████▋ | 69/79 [00:22<00:01,  6.11it/s]
+Sample GT kqomqdrbdpbxljnuribgkakavyptkjhxmf
+Sample Training: Generated vvvvebbbaaaaaaaaaa
+Sample Training Distance 31
+100%|██████████| 79/79 [00:25<00:00,  3.12it/s]
+epoch: 2 Training Loss: 81.87230
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated aaaaaaaaaaa
+Sample Valid Distance 28
+epoch: 2 Validation Distance: 17.984375
+ 77%|███████▋  | 61/79 [00:21<00:03,  5.85it/s]
+Sample GT yhsdchdbnfdncasfxnlsxgie
+Sample Training: Generated xwgddbbacaaaacieddbdeg
+Sample Training Distance 20
+100%|██████████| 79/79 [00:25<00:00,  3.08it/s]
+epoch: 3 Training Loss: 80.51558
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated idaceeeeecccccccbbbbbbbb
+Sample Valid Distance 22
+epoch: 3 Validation Distance: 22.1640625
+ 34%|███▍      | 27/79 [00:16<00:08,  6.24it/s]
+Sample GT lungcopmrjmjbppiyoqkn
+Sample Training: Generated rwwweeyyyyyyeryyrppp
+Sample Training Distance 21
+100%|██████████| 79/79 [00:25<00:00,  3.12it/s]
+epoch: 4 Training Loss: 79.51955
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated vmcacofofofffcccaaaaaaa
+Sample Valid Distance 23
+epoch: 4 Validation Distance: 26.3125
+ 92%|█████████▏| 73/79 [00:23<00:00,  6.21it/s]
+Sample GT sttcdrtpbxooibqantbcxx
+Sample Training: Generated xxdbdvxaaxaxaaxaqaa
+Sample Training Distance 19
+100%|██████████| 79/79 [00:25<00:00,  3.12it/s]
+epoch: 5 Training Loss: 77.53841
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated xxbaoyxxuuudvuudbuuuudab
+Sample Valid Distance 24
+  0%|          | 0/79 [00:00<?, ?it/s]epoch: 5 Validation Distance: 18.5
+ 73%|███████▎  | 58/79 [00:21<00:03,  6.11it/s]
+Sample GT gbhxxoninjayjddimyq
+Sample Training: Generated eafmrllgaaacccg
+Sample Training Distance 18
+100%|██████████| 79/79 [00:25<00:00,  3.13it/s]
+epoch: 6 Training Loss: 74.01674
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated ywpacmydpyihhldtbtatadoyac
+Sample Valid Distance 25
+epoch: 6 Validation Distance: 21.3671875
+ 91%|█████████ | 72/79 [00:23<00:01,  6.26it/s]
+Sample GT dfngktbdwydvimjfgjjbtcvxvi
+Sample Training: Generated dfkgiibcxycufhjggggegco
+Sample Training Distance 18
+100%|██████████| 79/79 [00:25<00:00,  3.14it/s]
+epoch: 7 Training Loss: 69.84238
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated ywpacyybmymdmbxaxaabb
+Sample Valid Distance 23
+epoch: 7 Validation Distance: 15.984375
+ 76%|███████▌  | 60/79 [00:21<00:03,  6.21it/s]
+Sample GT emnwlmiakmpxxkuuajskrvgsx
+Sample Training: Generated empqoidbjyyyyuucahtplifp
+Sample Training Distance 20
+100%|██████████| 79/79 [00:25<00:00,  3.10it/s]
+epoch: 8 Training Loss: 65.49367
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated ywkacobkoolghobkwaawwabbbc
+Sample Valid Distance 24
+epoch: 8 Validation Distance: 21.8828125
+ 91%|█████████ | 72/79 [00:23<00:01,  6.17it/s]
+Sample GT htwdtbpeanaenbvqoq
+Sample Training: Generated hvwdtbpdamafkbpr
+Sample Training Distance 9
+100%|██████████| 79/79 [00:25<00:00,  3.12it/s]
+epoch: 9 Training Loss: 61.02273
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated ywnadyckoolkmgvctbtwbcvwwad
+Sample Valid Distance 23
+epoch: 9 Validation Distance: 14.6484375
+ 19%|█▉        | 15/79 [00:14<00:12,  5.31it/s]
+Sample GT fsrjkismqxcgohinthuxcub
+Sample Training: Generated fuojjlqquucflhklqkxwcxcu
+Sample Training Distance 18
+100%|██████████| 79/79 [00:25<00:00,  3.10it/s]
+epoch: 10 Training Loss: 53.75057
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated ywnadyckonnmgksdndxbbvyradvypadbr
+Sample Valid Distance 23
+epoch: 10 Validation Distance: 14.2734375
+ 23%|██▎       | 18/79 [00:14<00:10,  5.81it/s]
+Sample GT snwrcfaxjqoknskc
+Sample Training: Generated uoywcfayjqlmoolc
+Sample Training Distance 10
+100%|██████████| 79/79 [00:25<00:00,  3.11it/s]
+epoch: 11 Training Loss: 46.91774
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated ywnadwckooomehuducubbryracbq
+Sample Valid Distance 20
+epoch: 11 Validation Distance: 12.328125
+ 43%|████▎     | 34/79 [00:17<00:07,  6.27it/s]
+Sample GT pabolesqoadeyqcikylvxrtdbbk
+Sample Training: Generated rabolgssnccdsqbhjomxqmymbb
+Sample Training Distance 19
+100%|██████████| 79/79 [00:25<00:00,  3.11it/s]
+epoch: 12 Training Loss: 48.45260
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated vwnadwckooolehtewdwcubctypadbqi
+Sample Valid Distance 19
+epoch: 12 Validation Distance: 11.609375
+ 22%|██▏       | 17/79 [00:14<00:10,  5.85it/s]
+Sample GT viytfsoskexprlbbcpqpb
+Sample Training: Generated yhyrfsoqjeyprncbcqqsc
+Sample Training Distance 11
+100%|██████████| 79/79 [00:25<00:00,  3.11it/s]
+epoch: 13 Training Loss: 41.19906
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated utnadwcknnolehtexcubcqypbcbqi
+Sample Valid Distance 15
+epoch: 13 Validation Distance: 10.5625
+ 56%|█████▌    | 44/79 [00:18<00:05,  6.28it/s]
+Sample GT nogmaibhsypbxgqpqqapksykwh
+Sample Training: Generated nngmaibgsypbwgqoqsaokvykx
+Sample Training Distance 9
+100%|██████████| 79/79 [00:25<00:00,  3.10it/s]
+epoch: 14 Training Loss: 38.77416
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated uynadyckompomehtewcubcqypbdaq
+Sample Valid Distance 16
+epoch: 14 Validation Distance: 10.046875
+ 51%|█████     | 40/79 [00:18<00:06,  6.25it/s]
+Sample GT ibxyxddhydpcgxvpgnasj
+Sample Training: Generated jbyyyddhydpcgxwpgnasj
+Sample Training Distance 4
+100%|██████████| 79/79 [00:25<00:00,  3.14it/s]
+epoch: 15 Training Loss: 37.77293
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated tyladycknnonfhtewcuccqypbdbqh
+Sample Valid Distance 14
+epoch: 15 Validation Distance: 8.9453125
+ 10%|█         | 8/79 [00:13<00:33,  2.11it/s]
+Sample GT fxdsgkusfgbwjnqurkcytitpy
+Sample Training: Generated gydrgkvtfgbyimqurlcyrhupy
+Sample Training Distance 12
+100%|██████████| 79/79 [00:25<00:00,  3.11it/s]
+epoch: 16 Training Loss: 35.20500
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated tyladwcknnonkehtewcuccqypbdbqi
+Sample Valid Distance 15
+epoch: 16 Validation Distance: 7.9609375
+ 41%|████      | 32/79 [00:16<00:07,  6.12it/s]
+Sample GT sopxsmsghcpnkinwpiyeaafybxlyuiemyb
+Sample Training: Generated snpwrmrghcpnjioxoiydaafxbxlyviemyc
+Sample Training Distance 12
+100%|██████████| 79/79 [00:25<00:00,  3.14it/s]
+epoch: 17 Training Loss: 34.01779
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated tyladyclononigsexcuccqypbdbqi
+Sample Valid Distance 15
+epoch: 17 Validation Distance: 7.7890625
+ 11%|█▏        | 9/79 [00:13<00:26,  2.66it/s]
+Sample GT yvpkgpsydbygxjjbugl
+Sample Training: Generated ywpkgosydbygxjjbugl
+Sample Training Distance 2
+100%|██████████| 79/79 [00:25<00:00,  3.13it/s]
+epoch: 18 Training Loss: 33.93934
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated txmadyckompnghtexcubcqypbcbqi
+Sample Valid Distance 14
+epoch: 18 Validation Distance: 11.8671875
+ 72%|███████▏  | 57/79 [00:21<00:03,  6.11it/s]
+Sample GT ajgwqqoxwtrkwkorv
+Sample Training: Generated ajgxqpquwuqnwkosx
+Sample Training Distance 9
+100%|██████████| 79/79 [00:25<00:00,  3.09it/s]
+epoch: 19 Training Loss: 33.68468
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated uymadycmononehtexcuccqypbdbqi
+Sample Valid Distance 10
+epoch: 19 Validation Distance: 7.0625
+ 54%|█████▍    | 43/79 [00:18<00:05,  6.30it/s]
+Sample GT admliltrgietmssg
+Sample Training: Generated admliltsgieumssl
+Sample Training Distance 3
+100%|██████████| 79/79 [00:25<00:00,  3.09it/s]
+epoch: 20 Training Loss: 31.58902
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated twladwclononkehtfxcuccqypbdbqi
+Sample Valid Distance 12
+epoch: 20 Validation Distance: 6.78125
+ 22%|██▏       | 17/79 [00:14<00:10,  5.78it/s]
+Sample GT fcompvnaxhtnkgmyjkl
+Sample Training: Generated fcomqvnayhtnkgmyjkl
+Sample Training Distance 2
+100%|██████████| 79/79 [00:25<00:00,  3.12it/s]
+epoch: 21 Training Loss: 30.86359
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated tymadyclonpnfhtexcuccqypbdbqi
+Sample Valid Distance 12
+epoch: 21 Validation Distance: 6.4453125
+  0%|          | 0/79 [00:00<?, ?it/s]
+Sample GT tbactewkvrqhmcrfuynkfogccldsugtp
+Sample Training: Generated ubactewkvqqhmcrfuymkfogccldstgt
+Sample Training Distance 5
+100%|██████████| 79/79 [00:25<00:00,  3.12it/s]
+epoch: 22 Training Loss: 30.18209
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated tyladyclononfhtfxcuccqypbdbqi
+Sample Valid Distance 12
+epoch: 22 Validation Distance: 6.15625
+ 89%|████████▊ | 70/79 [00:23<00:01,  6.27it/s]
+Sample GT staqsfxcpieybpdt
+Sample Training: Generated utarsfycqieybqet
+Sample Training Distance 6
+100%|██████████| 79/79 [00:25<00:00,  3.08it/s]
+epoch: 23 Training Loss: 29.80579
+
+Sample GT sxmadxcmonqmehtfxbuccqxpbdbph
+Sample Valid: Generated tymadyclononehtexcuccqypbdbqi
+Sample Valid Distance 11
+epoch: 23 Validation Distance: 6.046875
+ 99%|█████████▊| 78/79 [00:24<00:00,  6.30it/s]
+Sample GT ldmugvihdfqcffuvwf
+Sample Training: Generated ndmugvihdfqcffuwxf
+Sample Training Distance 3
+100%|██████████| 79/79 [00:25<00:00,  3.08it/s]
+epoch: 24 Training Loss: 29.61176
