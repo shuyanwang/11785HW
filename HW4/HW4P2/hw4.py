@@ -7,6 +7,7 @@ from torch.nn import functional
 from models import *
 
 PAD_INDEX = 0  # CANNOT BE NEGATIVE, OTHERWISE EMBEDDING WOULD CAUSE ERROR
+PRE_TRAIN_EPOCHS = 10
 
 
 class ParamsHW4(Params):
@@ -201,7 +202,7 @@ class HW4(Learning):
                     # (B,e,To)
                     output = self.model(x, lengths_x, gt=y, p_tf=self.forcing_p(epoch),
                                         plot=i == plot_index and self.params.plot,
-                                        pretrain=self.params.pretrain and epoch < 15)
+                                        pretrain=self.params.pretrain and epoch < PRE_TRAIN_EPOCHS)
 
                     if i == plot_index:
                         y_strs = HW4.to_str(y)
@@ -335,7 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('--le', default=3, type=int)
     parser.add_argument('--he', default=256, type=int)
     parser.add_argument('--hd', default=512, type=int)
-    parser.add_argument('--schedule', default=5, type=int)
+    parser.add_argument('--schedule', default=20, type=int)
     parser.add_argument('--decay', default=0, type=float)
     parser.add_argument('--optimizer', default='Adam')
     parser.add_argument('--embedding', default=256, type=int)

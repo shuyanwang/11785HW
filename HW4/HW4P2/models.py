@@ -288,10 +288,10 @@ class Model1(nn.Module):
 
         nn.init.uniform_(self.decoder.embedding.weight, -0.1, 0.1)
 
-    def forward(self, x, gt=None, p_tf=0.9, plot=False, pretrain=False):
+    def forward(self, x, lengths, gt=None, p_tf=0.9, plot=False, pretrain=False):
         if pretrain:
             return self.decoder(None, None, None, gt, p_tf, plot=False, B=x.shape[0])
-        key, value, encoder_len = self.encoder(x)
+        key, value, encoder_len = self.encoder(x, lengths)
         return self.decoder(key, value, encoder_len, gt, p_tf, plot=plot, B=x.shape[0])
 
 
