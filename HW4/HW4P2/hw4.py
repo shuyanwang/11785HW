@@ -146,17 +146,19 @@ class HW4(Learning):
                                                        collate_fn=collate_test)
 
     @staticmethod
-    def decode(output):
+    def decode(output, eos=False):
         """
         :param output: (B,o,T)
+        :param eos: show <eos> at the end
         :return: [str] (B)
         """
-        return HW4.to_str(torch.argmax(output, dim=1))
+        return HW4.to_str(torch.argmax(output, dim=1), eos)
 
     @staticmethod
-    def to_str(y):
+    def to_str(y, eos=False):
         """
         :param y: (B,T)
+        :param eos:
         :return: [str] (B)
         """
         results = []
@@ -164,7 +166,9 @@ class HW4(Learning):
             chars = []
             for char in y_b:
                 char = char.item()
-                if char == 0:
+                if char == letter2index['<eos>']:
+                    if eos:
+                        chars.append('<eos>')
                     break
                 chars.append(index2letter[char])
             results.append(''.join(chars))

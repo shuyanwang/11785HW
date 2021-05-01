@@ -1,7 +1,7 @@
 import numpy as np
 
 from utils.base import *
-from HW4 import ParamsHW4
+from hw4 import ParamsHW4
 import torch
 from torch import nn, Tensor
 
