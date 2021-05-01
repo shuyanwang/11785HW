@@ -71,33 +71,34 @@ def collate_train_val(data):
     """
 
     :param data: List of Tuple
-    :return: pad_x, lengths_x, pad_y, lengths_y
+    :return: packed_x, pad_y, lengths_y
     """
-    x_lengths = []
-    y_lengths = []
-    x = []
-    y = []
-    for item in data:
-        x.append(item[0])
-        y.append(item[1])
-        x_lengths.append(item[0].shape[0])
-        y_lengths.append(item[1].shape[0])
+    # x_lengths = [x.shape[0] for (x, y) in data]
+    y_lengths = [y.shape[0] for (x, y) in data]
+    x_items = [x for (x, y) in data]
+    y_items = [y for (x, y) in data]
+    # for item in data:
+    #     x.append(item[0])
+    #     y.append(item[1])
+    #     x_lengths.append(item[0].shape[0])
+    #     y_lengths.append(item[1].shape[0])
 
-    pad_x = nn.utils.rnn.pad_sequence(x, batch_first=True)
-    pad_y = nn.utils.rnn.pad_sequence(y, batch_first=True, padding_value=PAD_INDEX)
+    # pad_x = nn.utils.rnn.pad_sequence(x_items, batch_first=True)
+    # pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
 
-    return pad_x, torch.as_tensor(x_lengths), pad_y, torch.as_tensor(y_lengths)
+    pack_x = nn.utils.rnn.pack_sequence(x_items, enforce_sorted=False)
+    pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
+
+    return pack_x, pad_y, torch.as_tensor(y_lengths)
 
 
 def collate_test(data):
     """
 
     :param data:
-    :return: pad_x, lengths_x
+    :return: pack_x
     """
-    lengths = torch.as_tensor([x.shape[0] for x in data])
-
-    return nn.utils.rnn.pad_sequence(data, batch_first=True), lengths
+    return nn.utils.rnn.pack_sequence(data, enforce_sorted=False)
 
 
 class HW4(Learning):
@@ -190,12 +191,11 @@ class HW4(Learning):
 
                 for i, batch in enumerate(tqdm(self.train_loader)):
                     x = batch[0].to(self.device)
-                    lengths_x = batch[1]
-                    y = batch[2].to(self.device)  # (B,To)
-                    lengths_y = batch[3]  # (B)
+                    y = batch[1].to(self.device)  # (B,To)
+                    lengths_y = batch[2]  # (B)
 
                     # (B,e,To)
-                    output = self.model(x, lengths_x, y, self.forcing_p(epoch),
+                    output = self.model(x, gt=y, p_tf=self.forcing_p(epoch),
                                         plot=i == plot_index and self.params.plot)
 
                     if i == plot_index:
@@ -207,12 +207,12 @@ class HW4(Learning):
                         print('Sample Training Distance',
                               Levenshtein.distance(y_strs[0], out_strs[0]))
 
-                    loss = self.criterion(output, y)  # (B,T)
+                    loss = self.criterion(output, y)  # (B,To)
 
-                    mask = torch.arange(0, y.shape[1]).unsqueeze(1) < lengths_y.unsqueeze(0)
-                    mask = mask.transpose(0, 1).to(self.device)  # (B,T)
+                    mask = torch.arange(y.shape[1]).unsqueeze(1) >= lengths_y.unsqueeze(0)
+                    mask = mask.transpose(0, 1).to(self.device)  # (B,To)
 
-                    loss[torch.logical_not(mask)] = 0
+                    loss[mask] = 0
 
                     loss_item = torch.sum(loss) / self.params.B
 
@@ -248,14 +248,10 @@ class HW4(Learning):
 
                 for i, batch in enumerate(self.valid_loader):
                     x = batch[0].to(self.device)
-                    lengths_x = batch[1]
-                    y = batch[2]  # (B,To)
-                    # lengths_y = batch[3]
+                    y = batch[1]  # (B,To)
 
                     # (B,e,To)
-                    output = self.model(x, lengths_x)
-                    y = functional.pad(y, (0, output.shape[2] - y.shape[1]), value=PAD_INDEX).to(
-                            self.device)
+                    output = self.model(x)
 
                     y_strs = HW4.to_str(y)
                     out_strs = HW4.decode(output)
@@ -328,7 +324,7 @@ if __name__ == '__main__':
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
-    parser.add_argument('--save', default=2, type=int, help='Checkpoint interval')
+    parser.add_argument('--save', default=1, type=int, help='Checkpoint interval')
     parser.add_argument('--load', default='', help='Load Name')
     parser.add_argument('--le', default=3, type=int)
     parser.add_argument('--he', default=256, type=int)
@@ -358,5 +354,5 @@ if __name__ == '__main__':
 
     index2letter = {letter2index[key]: key for key in letter2index}
 
-    num_workers = 8
+    num_workers = 4
     main(args)

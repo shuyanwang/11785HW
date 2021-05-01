@@ -1,4 +1,5 @@
 import numpy as np
+from torch.nn.utils.rnn import PackedSequence
 
 from utils.base import *
 from hw4 import ParamsHW4
@@ -12,11 +13,10 @@ class Encoder(nn.Module, ABC):
         self.param = param
 
     @abstractmethod
-    def forward(self, x: torch.Tensor, lengths):
+    def forward(self, x: PackedSequence):
         """
 
-        :param x: padded (B,Tin,40)
-        :param lengths: (B,) list
+        :param x: packed (B,Tin,40)
         :return: # (B,Te,H), lengths_out: hidden states of the last layer
         """
         pass
@@ -44,13 +44,15 @@ class PBLSTM(nn.Module):
                            bidirectional=True,
                            batch_first=True)
 
-    def forward(self, x: Tensor, lengths):
+    def forward(self, x: PackedSequence):
         """
 
-        :param x: (B,T,C) padded -> just a tensor
-        :param lengths
-        :return: (B,T//2,H*2), lengths
+        :param x: (B,T,C) packed -> just a tensor
+        :return: (B,T//2,H*2) packed
         """
+
+        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+
         B, T, C = x.shape
 
         if T % 2 == 1:
@@ -60,9 +62,8 @@ class PBLSTM(nn.Module):
         x = x.contiguous().view(B, T // 2, C * 2)
         x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         x = self.rnn(x)[0]
-        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
 
-        return x, lengths
+        return x
 
 
 class Encoder1(Encoder):
@@ -82,19 +83,18 @@ class Encoder1(Encoder):
         self.key_network = nn.Linear(param.hidden_encoder * 2, param.attention_dim)
         self.value_network = nn.Linear(param.hidden_encoder * 2, param.attention_dim)
 
-    def forward(self, x: torch.Tensor, lengths):
+    def forward(self, x: torch.Tensor):
         """
 
         :param x: B,T,C
         :param lengths: Tensor
         :return: k ,v, lengths
         """
-        x = nn.utils.rnn.pack_padded_sequence(x, lengths, enforce_sorted=False, batch_first=True)
         x = self.first(x)[0]
-        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
-
         for layer in self.rnn:
-            x, lengths = layer(x, lengths)
+            x = layer(x)
+
+        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
 
         k = self.key_network(x)  # (B,T//(2**num_layer),a)
         v = self.value_network(x)  # same as k
@@ -170,15 +170,15 @@ class Decoder1(Decoder):
         :param key: (B,Tout_e,a)
         :param value: (B,Tout_e,a)
         :param mask: (B,Toe)
-        :return: query (B,a), context', hidden1', hidden2', attention (B,a)
+        :return: context', hidden1', hidden2', attention (B,a)
         """
         input_word_embedding = self.embedding(input_words)
 
         h1, c1 = self.lstm1(torch.cat([input_word_embedding, context], dim=-1), hidden1)
-        query, c2 = self.lstm2(h1, hidden2)
-        context, attention = self.attention(query, key, value, mask)
+        h2, c2 = self.lstm2(h1, hidden2)
+        context, attention = self.attention(h2, key, value, mask)
 
-        return query, context, (h1, c1), (query, c2), attention
+        return context, (h1, c1), (h2, c2), attention
 
     def forward(self, k, v, encoded_lengths, gt, p_tf, plot=False):
         """
@@ -197,11 +197,10 @@ class Decoder1(Decoder):
         mask = torch.arange(Td).unsqueeze(0) >= torch.as_tensor(encoded_lengths).unsqueeze(1)
         mask = mask.to(self.param.device)
 
-        context = torch.zeros((B, a)).to(self.param.device)
+        context = torch.zeros((B, a)).to(self.param.device)  # value[:,0,:]
         hidden1 = None
         hidden2 = None
 
-        # predictions = []
         prediction_chars = torch.zeros(B, dtype=torch.long).to(
                 self.param.device)  # <eol> at the beginning
 
@@ -217,13 +216,12 @@ class Decoder1(Decoder):
             else:
                 input_words = prediction_chars
 
-            query, context, hidden1, hidden2, attention = self._forward_step(input_words, context,
-                                                                             hidden1, hidden2, k, v,
-                                                                             mask)
-
+            context, hidden1, hidden2, attention = self._forward_step(input_words, context,
+                                                                      hidden1, hidden2, k, v, mask)
             attention_to_plot[i, :] = attention[0]
 
-            prediction_raw = self.character_prob(torch.cat([query, context], dim=1))  # (B,vocab)
+            prediction_raw = self.character_prob(
+                    torch.cat([hidden2[0], context], dim=1))  # (B,vocab)
             prediction_chars = prediction_raw.argmax(dim=-1)
             predictions[:, :, i] = prediction_raw
 
@@ -245,8 +243,8 @@ class Model1(nn.Module):
 
         nn.init.uniform_(self.decoder.embedding.weight, -0.1, 0.1)
 
-    def forward(self, x, x_len, gt=None, p_tf=0.9, plot=False):
-        key, value, encoder_len = self.encoder(x, x_len)
+    def forward(self, x, gt=None, p_tf=0.9, plot=False):
+        key, value, encoder_len = self.encoder(x)
         predictions = self.decoder(key, value, encoder_len, gt, p_tf, plot)
         return predictions
 
@@ -345,7 +343,7 @@ class Model2(nn.Module):
 
         nn.init.uniform_(self.decoder.embedding.weight, -0.1, 0.1)
 
-    def forward(self, x, x_len, gt=None, p_tf=0.9, plot=False):
-        key, value, encoder_len = self.encoder(x, x_len)
+    def forward(self, x, gt=None, p_tf=0.9, plot=False):
+        key, value, encoder_len = self.encoder(x)
         predictions = self.decoder(key, value, encoder_len, gt, p_tf, plot)
         return predictions
