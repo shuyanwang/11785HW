@@ -269,7 +269,6 @@ class Decoder2(Decoder):
         :param input_words: (B,)
         :param context: (B,a)
         :param hidden1: (h,c)
-        :param hidden2: (h,c)
         :param key: (B,Tout_e,a)
         :param value: (B,Tout_e,a)
         :param mask: (B,Toe)
