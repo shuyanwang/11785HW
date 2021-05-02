@@ -11,7 +11,7 @@ PRE_TRAIN_EPOCHS = 10
 
 class ParamsHW4(Params):
     def __init__(self, B, lr, embedding_dim, attention_dim, dropout, device, layer_encoder,
-                 hidden_encoder, hidden_decoder, schedule_int, decay, optimizer,
+                 hidden_encoder, hidden_decoder, schedule_int, decay, optimizer, clip,
                  forcing_tuple, data_dir, max_epoch=20001, plot=False, pretrain=False):
         super().__init__(B=B, lr=lr, max_epoch=max_epoch, dropout=dropout,
                          output_channels=len(index2letter),
@@ -28,6 +28,7 @@ class ParamsHW4(Params):
         self.decay = decay
         self.optimizer = optimizer
         self.pretrain = pretrain
+        self.clip = clip
 
         assert embedding_dim == self.attention_dim * 2
 
@@ -36,7 +37,8 @@ class ParamsHW4(Params):
                 self.dropout) + 'le' + str(layer_encoder) + 'he' + str(
                 hidden_encoder) + 'hd' + str(hidden_decoder) + 'emb' + str(
                 embedding_dim) + 'att' + str(attention_dim) + 'forcing' + forcing_tuple + \
-                   ('TOY' if 'simple' in data_dir else '') + ('pre' if pretrain else '')
+                   ('TOY' if 'simple' in data_dir else '') + ('pre' if pretrain else '') + (
+                       'clip' if clip else '')
 
     def __str__(self):
         return self.str
@@ -181,7 +183,7 @@ class HW4(Learning):
         return results
 
     def train(self, checkpoint_interval=5):
-        self._validate(0)
+        self._validate(self.init_epoch)
         if self.train_loader is None:
             self._load_train()
 
@@ -226,6 +228,10 @@ class HW4(Learning):
 
                     self.optimizer.zero_grad()
                     loss_item.backward()
+
+                    if self.params.clip:
+                        nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+
                     self.optimizer.step()
 
                 total_loss /= (i + 1)
@@ -304,6 +310,7 @@ def main(args):
                        schedule_int=args.schedule, decay=args.decay, optimizer=args.optimizer,
                        embedding_dim=args.embedding, attention_dim=args.attention,
                        forcing_tuple=args.forcing, plot=args.plot, pretrain=args.pretrain,
+                       clip=args.clip,
                        data_dir='C:\\DLData\\11785_data\\HW4' + (
                            '\\hw4p2_simple' if args.toy else ''))
 
@@ -345,6 +352,8 @@ if __name__ == '__main__':
     parser.add_argument('--toy', action='store_true')
     parser.add_argument('--plot', action='store_true')
     parser.add_argument('--pretrain', action='store_true')
+    parser.add_argument('--clip', action='store_true')
+
     args = parser.parse_args()
     if args.toy:
         letter2index = {"<eos>": 0, "a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8,
