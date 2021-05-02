@@ -2,7 +2,6 @@ import os
 import torch.utils.data
 import Levenshtein
 import argparse
-from torch.nn import functional
 
 from models import *
 
@@ -48,6 +47,7 @@ class DataSetHW4(torch.utils.data.Dataset):
         super().__init__()
         self.X = np.load(X_path, allow_pickle=True)
         self.N = self.X.shape[0]
+        self.Y = None
 
         if Y_path is not None:
             self.Y = np.load(Y_path, allow_pickle=True)
@@ -290,7 +290,7 @@ class HW4(Learning):
                         lengths = item[1]
 
                         output = self.model(x, lengths)
-                        results = self.decode(output)
+                        results = HW4.decode(output)
 
                         for b in range(x.shape[0]):
                             f.write(str(i * self.params.B + b) + ',')
@@ -336,7 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('--le', default=3, type=int)
     parser.add_argument('--he', default=256, type=int)
     parser.add_argument('--hd', default=512, type=int)
-    parser.add_argument('--schedule', default=20, type=int)
+    parser.add_argument('--schedule', default=15, type=int)
     parser.add_argument('--decay', default=0, type=float)
     parser.add_argument('--optimizer', default='Adam')
     parser.add_argument('--embedding', default=256, type=int)
