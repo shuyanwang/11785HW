@@ -1,5 +1,5 @@
 from typing import Union
-
+from torch.nn import functional
 import numpy as np
 from torch.nn.utils.rnn import PackedSequence
 
@@ -60,6 +60,33 @@ class Encoder(nn.Module, ABC):
 #     @abstractmethod
 #     def forward(self, k, v, encoded_lengths, gt, p_tf):
 #         pass
+
+class WeightDrop(nn.Module):
+    def __init__(self, module, p=0.5):
+        super(WeightDrop, self).__init__()
+        self.p = p
+        self.module = module
+        self._setup()
+
+    def null(*args, **kwargs):
+        return
+
+    def _setup(self):
+        if issubclass(type(self.module), torch.nn.RNNBase):
+            self.module.flatten_parameters = self.null
+
+        w = getattr(self.module, 'weight_hh_l0')
+        del self.module._parameters['weight_hh_l0']
+        self.module.register_parameter('weight_hh_l0' + '_raw', nn.Parameter(w.data))
+
+    def _setweights(self):
+        raw_w = getattr(self.module, 'weight_hh_l0' + '_raw')
+        w = nn.Parameter(functional.dropout(raw_w, p=self.p, training=self.training))
+        setattr(self.module, 'weight_hh_l0', w)
+
+    def forward(self, *args):
+        self._setweights()
+        return self.module.forward(*args)
 
 
 class PBLSTM(nn.Module):
@@ -467,6 +494,103 @@ class Model3(nn.Module):
     def __init__(self, param):
         super().__init__()
         self.encoder = Encoder3(param)
+        self.decoder = Decoder(param)
+
+        for weight in self.parameters():
+            nn.init.uniform_(weight, -1 / np.sqrt(512), 1 / np.sqrt(512))
+
+        nn.init.uniform_(self.decoder.embedding.weight, -0.1, 0.1)
+
+    def forward(self, x, lengths, gt=None, p_tf=0.9, plot=False, pretrain=False):
+        if pretrain:
+            return self.decoder(None, None, None, gt, p_tf, plot=False, B=x.shape[0])
+        key, value, encoder_len = self.encoder(x, lengths)
+        return self.decoder(key, value, encoder_len, gt, p_tf, plot=plot, B=x.shape[0])
+
+
+class PBLSTMW(nn.Module):
+    def __init__(self, input_dim, hidden_dim, drop):
+        """
+
+        :param input_dim: x.shape[2]
+        :param hidden_dim:
+        """
+        super().__init__()
+        self.rnn = WeightDrop(
+                nn.LSTM(input_size=input_dim * 2, hidden_size=hidden_dim, bidirectional=True,
+                        batch_first=True))
+        self.drop_layer = LockedDropOut()
+        self.drop = drop
+
+    def forward(self, x: PackedSequence):
+        """
+
+        :param x: (B,T,C) packed -> just a tensor
+        :return: (B,T//2,H*2) packed
+        """
+
+        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+
+        B, T, C = x.shape
+
+        if T % 2 == 1:
+            x = x[:, :-1, :]
+
+        lengths = lengths // 2
+        x = x.contiguous().view(B, T // 2, C * 2)
+
+        x = self.drop_layer(x, self.drop)
+
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+        x = self.rnn(x)[0]
+
+        return x
+
+
+class Encoder4(Encoder):
+    def __init__(self, param):
+        super().__init__(param)
+
+        self.first = WeightDrop(nn.LSTM(param.input_dims[0], param.hidden_encoder, batch_first=True,
+                                        bidirectional=True))
+        rnn = []
+        # 1 + 3
+
+        for i in range(param.layer_encoder):
+            rnn.append(PBLSTMW(param.hidden_encoder * 2, param.hidden_encoder, self.param.dropout))
+
+        self.rnn = nn.ModuleList(rnn)
+        self.drop_layer = LockedDropOut()
+
+        self.key_network = nn.Linear(param.hidden_encoder * 2, param.attention_dim)
+        self.value_network = nn.Linear(param.hidden_encoder * 2, param.attention_dim)
+
+    def forward(self, x: Tensor, lengths):
+        """
+
+        :param lengths:
+        :param x: B,T,C
+        :return: k ,v, lengths
+        """
+        x = self.drop_layer(x, self.param.dropout)
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
+
+        x = self.first(x)[0]
+        for layer in self.rnn:
+            x = layer(x)
+
+        x, lengths = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+
+        k = self.key_network(x)  # (B,T//(2**num_layer),a)
+        v = self.value_network(x)  # same as k
+
+        return k, v, lengths
+
+
+class Model4(nn.Module):
+    def __init__(self, param):
+        super().__init__()
+        self.encoder = Encoder4(param)
         self.decoder = Decoder(param)
 
         for weight in self.parameters():
