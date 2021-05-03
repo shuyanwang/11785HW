@@ -76,7 +76,7 @@ class WeightDrop(nn.Module):
             self.module.flatten_parameters = self.null
 
         w = getattr(self.module, 'weight_hh_l0')
-        del self.module._parameters['weight_hh_l0']
+        # del self.module._parameters['weight_hh_l0']
         self.module.register_parameter('weight_hh_l0' + '_raw', nn.Parameter(w.data))
 
     def _setweights(self):
