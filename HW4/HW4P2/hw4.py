@@ -178,6 +178,10 @@ class HW4(Learning):
                         chars.append('<eos>')
                     break
                 chars.append(index2letter[char])
+
+                while len(chars) != 0 and chars[-1] == ' ':
+                    chars.pop(-1)
+
             results.append(''.join(chars))
 
         return results
