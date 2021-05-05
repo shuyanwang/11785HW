@@ -179,8 +179,8 @@ class HW4(Learning):
                     break
                 chars.append(index2letter[char])
 
-                while len(chars) != 0 and chars[-1] == ' ':
-                    chars.pop(-1)
+            while len(chars) != 0 and chars[-1] == ' ':
+                chars.pop(-1)
 
             results.append(''.join(chars))
 
