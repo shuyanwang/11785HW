@@ -324,7 +324,7 @@ def main(args):
         if args.load == '':
             learner.load_model(args.epoch)
         else:
-            learner.load_model(args.epoch, args.load, optimizer=False)
+            learner.load_model(args.epoch, args.load)
 
     if args.train:
         learner.train(checkpoint_interval=args.save)
