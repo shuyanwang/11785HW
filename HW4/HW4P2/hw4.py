@@ -81,17 +81,9 @@ def collate_train_val(data):
     y_lengths = [y.shape[0] for (x, y) in data]
     x_items = [x for (x, y) in data]
     y_items = [y for (x, y) in data]
-    # for item in data:
-    #     x.append(item[0])
-    #     y.append(item[1])
-    #     x_lengths.append(item[0].shape[0])
-    #     y_lengths.append(item[1].shape[0])
 
     pad_x = nn.utils.rnn.pad_sequence(x_items, batch_first=True)
     pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
-
-    # pack_x = nn.utils.rnn.pack_sequence(x_items, enforce_sorted=False)
-    # pad_y = nn.utils.rnn.pad_sequence(y_items, batch_first=True, padding_value=PAD_INDEX)
 
     return pad_x, torch.as_tensor(x_lengths), pad_y, torch.as_tensor(y_lengths)
 
@@ -334,9 +326,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch', help='Batch Size', default=128, type=int)
+    parser.add_argument('--batch', help='Batch Size', default=32, type=int)
     parser.add_argument('--dropout', default=0.4, type=float)
-    parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--model', default='Model1', help='Model Name')
     parser.add_argument('--epoch', default=-1, help='Load Epoch', type=int)
@@ -347,7 +339,7 @@ if __name__ == '__main__':
     parser.add_argument('--le', default=3, type=int)
     parser.add_argument('--he', default=256, type=int)
     parser.add_argument('--hd', default=512, type=int)
-    parser.add_argument('--schedule', default=15, type=int)
+    parser.add_argument('--schedule', default=100, type=int)
     parser.add_argument('--decay', default=0, type=float)
     parser.add_argument('--optimizer', default='Adam')
     parser.add_argument('--embedding', default=256, type=int)
@@ -374,3 +366,8 @@ if __name__ == '__main__':
 
     num_workers = 4
     main(args)
+
+"""
+--train
+--clip
+"""
