@@ -3,8 +3,8 @@
 Author: Zongyue Zhao (zongyuez@andrew.cmu.edu)
 
 ## Verify the Results:
-Please run `python hw4.py --train --clip` until epoch 53. Then run 
-`python hw4.py --train --clip --load --forcing (0.6,0.6,10) --epoch 53
+Please run `utils/make_vocab.py` to parse the labels. Then, please run `python hw4.py --train --clip` until epoch 53.
+Then run `python hw4.py --train --clip --load --forcing (0.6,0.6,10) --epoch 53
 --load Model1_b32lr0.0005s100decay0Adamdrop0.4le3he256hd512emb256att128forcing(0.9,0.8,20)clip` until epoch 65,
 and finally run `python hw4.py --train --clip --load --forcing (0.5,0.5,10) --epoch 65
 --load Model1_b32lr0.0005s100decay0Adamdrop0.4le3he256hd512emb256att128forcing(0.6,0.6,10)clip` until epoch 76.
